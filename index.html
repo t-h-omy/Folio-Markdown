@@ -671,7 +671,7 @@ function parseMarkdown(src) {
       while(i<lines.length&&!/^```/.test(lines[i])){code+=escape(lines[i])+'\n';i++;}
       html+='<pre><code class="lang-'+lang+'">'+code+'</code></pre>'; i++; continue;
     }
-    const hm=line.match(/^(#{1,6})\s+(.+)/);
+    const hm=line.match(/^(#{1,6})\s+(.*)/);
     if(hm){html+='<h'+hm[1].length+'>'+inline(hm[2])+'</h'+hm[1].length+'>'; i++; continue;}
     if(/^[-*_]{3,}\s*$/.test(line)){html+='<hr>'; i++; continue;}
     if(/^>\s?/.test(line)){
