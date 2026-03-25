@@ -645,12 +645,19 @@ body.view-preview #preview-pane { transform: translateX(0);      opacity: 1; poi
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
     <span id="sheet-stats-text">— words · — chars · — lines</span>
   </div>
+  <div class="sheet-sep"></div>
+  <div class="sheet-info sheet-version">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span>Folio <span id="sheet-version-text"></span></span>
+  </div>
 </div>
 
 <input type="file" id="file-input" accept=".md,.markdown,.txt" style="display:none">
 <div id="toast"></div>
 
 <script>
+const APP_VERSION = 'v1.0';
+
 function parseMarkdown(src) {
   const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const inline = s => s
@@ -728,6 +735,8 @@ const editor=document.getElementById('editor'),
       sheetStats=document.getElementById('sheet-stats-text'),
       overlay=document.getElementById('sheet-overlay'),
       sheet=document.getElementById('bottom-sheet');
+
+document.getElementById('sheet-version-text').textContent = APP_VERSION;
 
 function showToast(msg,type='',dur=2200){
   toast.textContent=msg; toast.className='show '+(type||'');
