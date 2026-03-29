@@ -12,6 +12,7 @@
 <title>Folio — Markdown Editor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=JetBrains+Mono:wght@400;500&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" integrity="sha384-zZBvnvBsPsD4XQGBQMHifBGQllAlnvIMnQpLzsUVV5ZMGB3RDCkzX2z2F46WwqBE" crossorigin="anonymous">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -313,9 +314,22 @@ body.view-preview #preview-pane { transform: translateX(0);      opacity: 1; poi
 }
 #preview-content pre {
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 1em 1.2em; overflow-x: auto; margin: 1.1em 0;
+  border-radius: 0 0 var(--radius) var(--radius); padding: 1em 1.2em; overflow-x: auto; margin: 0;
 }
 #preview-content pre code { background: none; border: none; padding: 0; font-size: .87em; color: var(--text); }
+#preview-content .code-block-wrap { margin: 1.1em 0; }
+#preview-content .code-block-header {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--surface2); border: 1px solid var(--border); border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: .3em .7em; font-family: var(--mono); font-size: .75em; color: var(--muted);
+}
+.code-copy-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 4px; padding: .15em .5em; font-family: var(--mono); font-size: .75em;
+  cursor: pointer; transition: color var(--tr), border-color var(--tr);
+}
+.code-copy-btn:hover, .code-copy-btn.copied { color: var(--accent); border-color: var(--accent); }
 #preview-content ul,#preview-content ol { padding-left: 1.5em; margin: .7em 0; }
 #preview-content li { margin: .25em 0; }
 #preview-content li::marker { color: var(--accent); }
@@ -655,8 +669,9 @@ body.view-preview #preview-pane { transform: translateX(0);      opacity: 1; poi
 <input type="file" id="file-input" accept=".md,.markdown,.txt" style="display:none">
 <div id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha384-Rp3zDb+pEKMdYa2E5V6xwTVmV2gmnAsQfPWJF9tRl68m9p/WNPtNBGw2jS6jTAph" crossorigin="anonymous"></script>
 <script>
-const APP_VERSION = 'v1.0';
+const APP_VERSION = 'v1.1';
 
 function parseMarkdown(src) {
   const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -676,7 +691,7 @@ function parseMarkdown(src) {
     if(/^```/.test(line)){
       const lang=line.slice(3).trim(); let code=''; i++;
       while(i<lines.length&&!/^```/.test(lines[i])){code+=escape(lines[i])+'\n';i++;}
-      html+='<pre><code class="lang-'+lang+'">'+code+'</code></pre>'; i++; continue;
+      html+='<pre><code'+(lang?' class="lang-'+lang+'"':'')+'>'+code+'</code></pre>'; i++; continue;
     }
     const hm=line.match(/^(#{1,6})\s+(.*)/);
     if(hm){html+='<h'+hm[1].length+'>'+inline(hm[2])+'</h'+hm[1].length+'>'; i++; continue;}
@@ -758,7 +773,26 @@ function updateCursor(){
   const b=editor.value.substring(0,editor.selectionStart).split('\n');
   if(statCursor)statCursor.textContent='Ln '+b.length+', Col '+(b[b.length-1].length+1);
 }
-function renderPreview(){preview.innerHTML=parseMarkdown(editor.value);}
+function renderPreview(){
+  preview.innerHTML=parseMarkdown(editor.value);
+  preview.querySelectorAll('pre').forEach(pre=>{
+    const code=pre.querySelector('code'); if(!code) return;
+    const lang=(code.className.match(/lang-(\w+)/)||[])[1]||'';
+    hljs.highlightElement(code);
+    const header=document.createElement('div'); header.className='code-block-header';
+    const label=document.createElement('span'); label.textContent=lang||'plaintext';
+    const copyBtn=document.createElement('button'); copyBtn.className='code-copy-btn'; copyBtn.textContent='Copy';
+    copyBtn.addEventListener('click',()=>{
+      navigator.clipboard.writeText(code.textContent).then(()=>{
+        copyBtn.textContent='Copied!'; copyBtn.classList.add('copied');
+        setTimeout(()=>{copyBtn.textContent='Copy'; copyBtn.classList.remove('copied');},1500);
+      }).catch(()=>showToast('Copy failed','error'));
+    });
+    header.appendChild(label); header.appendChild(copyBtn);
+    const wrap=document.createElement('div'); wrap.className='code-block-wrap';
+    pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(header); wrap.appendChild(pre);
+  });
+}
 function showContent(){emptyState.classList.add('hidden');}
 
 function setView(v){
