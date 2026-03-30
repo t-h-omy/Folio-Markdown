@@ -452,6 +452,54 @@ body.view-preview #preview-pane { transform: translateX(0);      opacity: 1; poi
 #toast.error   { border-color: var(--danger); color: var(--danger); }
 @media (min-width: 768px) { #toast { bottom: 40px; } }
 
+/* CONFIRM DIALOG */
+#confirm-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 60; opacity: 0; pointer-events: none;
+  transition: opacity .2s;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+#confirm-overlay.open { opacity: 1; pointer-events: all; }
+#confirm-dialog {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -48%) scale(.96);
+  width: min(320px, calc(100vw - 40px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 20px 16px;
+  z-index: 61;
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s, transform .2s cubic-bezier(.4,0,.2,1);
+}
+#confirm-dialog.open {
+  opacity: 1; pointer-events: all;
+  transform: translate(-50%, -50%) scale(1);
+}
+.cd-title {
+  font-family: var(--display); font-size: 17px; font-weight: 600;
+  color: var(--text); margin-bottom: 8px;
+}
+.cd-msg {
+  font-family: var(--serif); font-size: 14px; color: var(--muted);
+  line-height: 1.5; margin-bottom: 20px;
+}
+.cd-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.cd-btn {
+  padding: 9px 18px;
+  border: none; border-radius: 8px;
+  font-family: var(--mono); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all var(--tr);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.cd-btn-cancel { background: var(--surface2); color: var(--muted); }
+.cd-btn-cancel:active { color: var(--text); }
+.cd-btn-discard { background: var(--danger); color: #fff; }
+.cd-btn-discard:active { opacity: .85; }
+
 /* BOTTOM SHEET */
 #sheet-overlay {
   position: fixed; inset: 0;
@@ -666,6 +714,15 @@ body.view-preview #preview-pane { transform: translateX(0);      opacity: 1; poi
   </div>
 </div>
 
+<div id="confirm-overlay"></div>
+<div id="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="cd-title">
+  <div class="cd-title" id="cd-title">Unsaved changes</div>
+  <div class="cd-msg">You have unsaved changes. Discard them and continue?</div>
+  <div class="cd-actions">
+    <button class="cd-btn cd-btn-cancel" id="cd-cancel">Keep editing</button>
+    <button class="cd-btn cd-btn-discard" id="cd-discard">Discard changes</button>
+  </div>
+</div>
 <input type="file" id="file-input" accept=".md,.markdown,.txt" style="display:none">
 <div id="toast"></div>
 
@@ -778,7 +835,9 @@ const editor=document.getElementById('editor'),
       navWC=document.getElementById('nav-word-count'),
       sheetStats=document.getElementById('sheet-stats-text'),
       overlay=document.getElementById('sheet-overlay'),
-      sheet=document.getElementById('bottom-sheet');
+      sheet=document.getElementById('bottom-sheet'),
+      confirmOverlay=document.getElementById('confirm-overlay'),
+      confirmDialog=document.getElementById('confirm-dialog');
 
 document.getElementById('sheet-version-text').textContent = APP_VERSION;
 
@@ -832,8 +891,11 @@ function setView(v){
   if(v!=='editor') renderPreview();
 }
 
-async function openFile(){
+function openFile(){
   closeSheet();
+  confirmDiscard(()=>_doOpenFile());
+}
+async function _doOpenFile(){
   if(window.showOpenFilePicker){
     try{
       const[h]=await window.showOpenFilePicker({types:[{description:'Markdown',accept:{'text/markdown':['.md','.markdown'],'text/plain':['.txt']}}]});
@@ -886,17 +948,38 @@ function fallbackSave(){
 
 function newFile(){
   closeSheet();
-  if(isDirty&&editor.value.trim()){if(!confirm('Discard unsaved changes?'))return;}
-  editor.value=''; fileHandle=null;
-  setFilename('untitled'); setDirty(false);
-  renderPreview(); updateStats();
-  emptyState.classList.remove('hidden');
-  if(statSaved)statSaved.textContent='—';
-  clearDraft(); setView('editor');
+  confirmDiscard(()=>{
+    editor.value=''; fileHandle=null;
+    setFilename('untitled'); setDirty(false);
+    renderPreview(); updateStats();
+    emptyState.classList.remove('hidden');
+    if(statSaved)statSaved.textContent='—';
+    clearDraft(); setView('editor');
+  });
 }
 
 function openSheet(){overlay.classList.add('open'); sheet.classList.add('open'); updateStats();}
 function closeSheet(){overlay.classList.remove('open'); sheet.classList.remove('open');}
+
+let _confirmCb=null;
+function confirmDiscard(cb){
+  if(isDirty&&editor.value.trim()){
+    _confirmCb=cb;
+    confirmOverlay.classList.add('open'); confirmDialog.classList.add('open');
+  } else { cb(); }
+}
+document.getElementById('cd-discard').addEventListener('click',()=>{
+  confirmOverlay.classList.remove('open'); confirmDialog.classList.remove('open');
+  if(_confirmCb){_confirmCb(); _confirmCb=null;}
+});
+document.getElementById('cd-cancel').addEventListener('click',()=>{
+  confirmOverlay.classList.remove('open'); confirmDialog.classList.remove('open');
+  _confirmCb=null;
+});
+confirmOverlay.addEventListener('click',()=>{
+  confirmOverlay.classList.remove('open'); confirmDialog.classList.remove('open');
+  _confirmCb=null;
+});
 
 overlay.addEventListener('click',closeSheet);
 document.getElementById('btn-menu').addEventListener('click',openSheet);
@@ -1016,10 +1099,12 @@ document.addEventListener('drop',async e=>{
   e.preventDefault();
   const f=e.dataTransfer.files[0];
   if(!f||!/\.(md|markdown|txt)$/i.test(f.name)){showToast('Drop a .md file','error');return;}
-  editor.value=await f.text();
-  setFilename(f.name.replace(/\.[^.]+$/,''));
-  fileHandle=null; setDirty(false); renderPreview(); updateStats(); showContent();
-  saveDraft(); showToast('File loaded','success');
+  confirmDiscard(async()=>{
+    editor.value=await f.text();
+    setFilename(f.name.replace(/\.[^.]+$/,''));
+    fileHandle=null; setDirty(false); renderPreview(); updateStats(); showContent();
+    saveDraft(); showToast('File loaded','success');
+  });
 });
 
 updateStats();
