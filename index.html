@@ -1027,7 +1027,10 @@ document.getElementById('md-toolbar').addEventListener('click',e=>{
     case 'strikethrough': wrapSel('~~','~~','text'); break;
     case 'code': wrapSel('`','`','code'); break;
     case 'ul': lineStart('- '); break;
-    case 'ol': lineStart('1. '); break;
+    case 'ol': lineStart('1. ');
+      {const rn=renumberOrderedLists(editor.value,editor.selectionStart);
+      if(rn){editor.value=rn.val;editor.selectionStart=editor.selectionEnd=rn.cursorPos;renderPreview();}}
+      break;
     case 'quote': lineStart('> '); break;
     case 'codeblock': wrapSel('```\n','\n```','code here'); break;
     case 'link': wrapSel('[','](url)','link text'); break;
@@ -1046,7 +1049,30 @@ document.getElementById('md-toolbar').addEventListener('click',e=>{
   }
 });
 
-editor.addEventListener('input',()=>{ showContent(); setDirty(true); renderPreview(); updateStats(); scheduleSaveDraft(); });
+function renumberOrderedLists(val,cursorPos){
+  const lines=val.split('\n');
+  let counter=0,changed=false,pos=0,newCursor=cursorPos;
+  for(let i=0;i<lines.length;i++){
+    const m=lines[i].match(/^(\d+)(\.\s+)/);
+    if(m){
+      counter++;
+      const oldNum=m[1],newNum=String(counter);
+      if(oldNum!==newNum){
+        lines[i]=newNum+m[2]+lines[i].slice(m[0].length);
+        changed=true;
+        if(pos<newCursor) newCursor+=newNum.length-oldNum.length;
+      }
+    }else{counter=0;}
+    pos+=lines[i].length+1;
+  }
+  return changed?{val:lines.join('\n'),cursorPos:Math.max(0,newCursor)}:null;
+}
+
+editor.addEventListener('input',()=>{
+  const rn=renumberOrderedLists(editor.value,editor.selectionStart);
+  if(rn){editor.value=rn.val;editor.selectionStart=editor.selectionEnd=rn.cursorPos;}
+  showContent(); setDirty(true); renderPreview(); updateStats(); scheduleSaveDraft();
+});
 editor.addEventListener('keyup',updateCursor);
 editor.addEventListener('click',updateCursor);
 editor.addEventListener('focus',showContent);
@@ -1076,6 +1102,10 @@ editor.addEventListener('keydown',e=>{
         // Empty list item — cancel list and leave cursor on a plain line
         editor.value=val.slice(0,ls)+val.slice(lineEnd);
         editor.selectionStart=editor.selectionEnd=ls;
+        if(olMatch){
+          const rn=renumberOrderedLists(editor.value,editor.selectionStart);
+          if(rn){editor.value=rn.val;editor.selectionStart=editor.selectionEnd=rn.cursorPos;}
+        }
       } else if(ulMatch){
         // Continue unordered list with same bullet character
         const ins='\n'+ulMatch[0];
@@ -1086,6 +1116,8 @@ editor.addEventListener('keydown',e=>{
         const ins='\n'+(parseInt(olMatch[1],10)+1)+'.'+olMatch[2];
         editor.value=val.slice(0,s)+ins+val.slice(s);
         editor.selectionStart=editor.selectionEnd=s+ins.length;
+        const rn=renumberOrderedLists(editor.value,editor.selectionStart);
+        if(rn){editor.value=rn.val;editor.selectionStart=editor.selectionEnd=rn.cursorPos;}
       }
       setDirty(true); renderPreview(); updateStats(); scheduleSaveDraft();
     }
