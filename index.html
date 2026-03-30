@@ -1059,6 +1059,37 @@ editor.addEventListener('keydown',e=>{
     editor.selectionStart=editor.selectionEnd=s+2;
     setDirty(true); renderPreview(); scheduleSaveDraft();
   }
+  if(e.key==='Enter'&&editor.selectionStart===editor.selectionEnd){
+    const s=editor.selectionStart;
+    const val=editor.value;
+    const ls=val.lastIndexOf('\n',s-1)+1;
+    const le=val.indexOf('\n',s);
+    const lineEnd=le===-1?val.length:le;
+    const fullLine=val.slice(ls,lineEnd);
+    const ulMatch=fullLine.match(/^([-*+]) /);
+    const olMatch=fullLine.match(/^(\d+)\.(\s+)/);
+    if(ulMatch||olMatch){
+      const prefix=ulMatch?ulMatch[0]:olMatch[0];
+      const content=fullLine.slice(prefix.length);
+      e.preventDefault();
+      if(content.trim()===''){
+        // Empty list item — cancel list and leave cursor on a plain line
+        editor.value=val.slice(0,ls)+val.slice(lineEnd);
+        editor.selectionStart=editor.selectionEnd=ls;
+      } else if(ulMatch){
+        // Continue unordered list with same bullet character
+        const ins='\n'+ulMatch[0];
+        editor.value=val.slice(0,s)+ins+val.slice(s);
+        editor.selectionStart=editor.selectionEnd=s+ins.length;
+      } else {
+        // Continue ordered list with incremented number, preserving original spacing
+        const ins='\n'+(parseInt(olMatch[1],10)+1)+'.'+olMatch[2];
+        editor.value=val.slice(0,s)+ins+val.slice(s);
+        editor.selectionStart=editor.selectionEnd=s+ins.length;
+      }
+      setDirty(true); renderPreview(); updateStats(); scheduleSaveDraft();
+    }
+  }
 });
 
 document.addEventListener('keydown',e=>{
