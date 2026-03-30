@@ -734,6 +734,35 @@ function parseMarkdown(src) {
 
 let fileHandle=null, isDirty=false, currentView='editor';
 
+// --- Draft persistence (survive device memory clearing) ---
+const DRAFT_KEY='folio_draft';
+let _draftTimer;
+function saveDraft(){
+  try{
+    localStorage.setItem(DRAFT_KEY,JSON.stringify({
+      content:editor.value,
+      filename:fnameText.textContent||'untitled',
+      dirty:isDirty
+    }));
+  }catch(e){console.warn('Draft save failed:',e);}
+}
+function clearDraft(){try{localStorage.removeItem(DRAFT_KEY);}catch(e){console.warn('Draft clear failed:',e);}}
+function scheduleSaveDraft(){clearTimeout(_draftTimer);_draftTimer=setTimeout(saveDraft,500);}
+function restoreDraft(){
+  try{
+    const raw=localStorage.getItem(DRAFT_KEY);
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    if(!d||typeof d.content!=='string'||!d.content)return;
+    editor.value=d.content;
+    setFilename(d.filename||'untitled');
+    setDirty(!!d.dirty);
+    renderPreview(); updateStats(); showContent();
+    showToast('Draft restored','success');
+  }catch(e){console.warn('Draft restore failed:',e);}
+}
+// ---
+
 const editor=document.getElementById('editor'),
       preview=document.getElementById('preview-content'),
       dirtyDot=document.getElementById('dirty-dot'),
@@ -812,6 +841,7 @@ async function openFile(){
       editor.value=await f.text();
       setFilename(f.name.replace(/\.[^.]+$/,''));
       setDirty(false); renderPreview(); updateStats(); showContent();
+      saveDraft();
       showToast('Opened','success');
     }catch(e){if(e.name!=='AbortError')showToast('Could not open','error');}
   } else { fileInput.click(); }
@@ -822,7 +852,7 @@ fileInput.addEventListener('change',async()=>{
   editor.value=await f.text();
   setFilename(f.name.replace(/\.[^.]+$/,''));
   fileHandle=null; setDirty(false); renderPreview(); updateStats(); showContent();
-  showToast('Opened','success'); fileInput.value='';
+  showToast('Opened','success'); saveDraft(); fileInput.value='';
 });
 
 async function saveFile(){
@@ -838,7 +868,7 @@ async function saveFile(){
       }
       const w=await fileHandle.createWritable();
       await w.write(editor.value); await w.close();
-      setDirty(false);
+      setDirty(false); clearDraft();
       const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
       if(statSaved)statSaved.textContent='Saved '+t;
       showToast('Saved ✓','success');
@@ -851,7 +881,7 @@ function fallbackSave(){
   const u=URL.createObjectURL(b);
   const a=Object.assign(document.createElement('a'),{href:u,download:(fnameText.textContent||'untitled')+'.md'});
   a.click(); URL.revokeObjectURL(u);
-  setDirty(false); showToast('Downloaded as .md','success');
+  setDirty(false); clearDraft(); showToast('Downloaded as .md','success');
 }
 
 function newFile(){
@@ -862,7 +892,7 @@ function newFile(){
   renderPreview(); updateStats();
   emptyState.classList.remove('hidden');
   if(statSaved)statSaved.textContent='—';
-  setView('editor');
+  clearDraft(); setView('editor');
 }
 
 function openSheet(){overlay.classList.add('open'); sheet.classList.add('open'); updateStats();}
@@ -885,7 +915,7 @@ function wrapSel(before,after,def){
   editor.value=editor.value.slice(0,s)+before+sel+after+editor.value.slice(e2);
   editor.selectionStart=s+before.length;
   editor.selectionEnd=s+before.length+sel.length;
-  editor.focus(); setDirty(true); renderPreview(); updateStats();
+  editor.focus(); setDirty(true); renderPreview(); updateStats(); scheduleSaveDraft();
 }
 function lineStart(prefix){
   const s=editor.selectionStart;
@@ -899,7 +929,7 @@ function lineStart(prefix){
     editor.value=editor.value.slice(0,ls)+prefix+line+editor.value.slice(e2);
     editor.selectionStart=editor.selectionEnd=s+prefix.length;
   }
-  editor.focus(); setDirty(true); renderPreview(); updateStats();
+  editor.focus(); setDirty(true); renderPreview(); updateStats(); scheduleSaveDraft();
 }
 
 document.getElementById('md-toolbar').addEventListener('click',e=>{
@@ -922,18 +952,18 @@ document.getElementById('md-toolbar').addEventListener('click',e=>{
       const p=editor.selectionStart,ins='\n---\n';
       editor.value=editor.value.slice(0,p)+ins+editor.value.slice(p);
       editor.selectionStart=editor.selectionEnd=p+ins.length;
-      editor.focus(); setDirty(true); renderPreview(); updateStats(); break;
+      editor.focus(); setDirty(true); renderPreview(); updateStats(); scheduleSaveDraft(); break;
     }
     case 'table':{
       const p=editor.selectionStart,tbl='\n| Column 1 | Column 2 | Column 3 |\n|----------|----------|----------|\n| Cell     | Cell     | Cell     |\n';
       editor.value=editor.value.slice(0,p)+tbl+editor.value.slice(p);
       editor.selectionStart=editor.selectionEnd=p+tbl.length;
-      editor.focus(); setDirty(true); renderPreview(); updateStats(); break;
+      editor.focus(); setDirty(true); renderPreview(); updateStats(); scheduleSaveDraft(); break;
     }
   }
 });
 
-editor.addEventListener('input',()=>{ showContent(); setDirty(true); renderPreview(); updateStats(); });
+editor.addEventListener('input',()=>{ showContent(); setDirty(true); renderPreview(); updateStats(); scheduleSaveDraft(); });
 editor.addEventListener('keyup',updateCursor);
 editor.addEventListener('click',updateCursor);
 editor.addEventListener('focus',showContent);
@@ -944,7 +974,7 @@ editor.addEventListener('keydown',e=>{
     const s=editor.selectionStart,e2=editor.selectionEnd;
     editor.value=editor.value.slice(0,s)+'  '+editor.value.slice(e2);
     editor.selectionStart=editor.selectionEnd=s+2;
-    setDirty(true); renderPreview();
+    setDirty(true); renderPreview(); scheduleSaveDraft();
   }
 });
 
@@ -989,10 +1019,11 @@ document.addEventListener('drop',async e=>{
   editor.value=await f.text();
   setFilename(f.name.replace(/\.[^.]+$/,''));
   fileHandle=null; setDirty(false); renderPreview(); updateStats(); showContent();
-  showToast('File loaded','success');
+  saveDraft(); showToast('File loaded','success');
 });
 
 updateStats();
+restoreDraft();
 setView('editor');
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
