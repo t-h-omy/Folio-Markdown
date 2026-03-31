@@ -435,7 +435,7 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
 }
 .toc-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   border-radius: 6px;
   transition: background var(--tr);
   -webkit-tap-highlight-color: transparent;
@@ -446,7 +446,7 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
 .toc-jump {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 9px 8px 9px 0;
   border: none;
@@ -462,9 +462,8 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
   overflow: hidden;
 }
 .toc-jump-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
 }
 .toc-row[data-depth="1"] .toc-jump { font-weight: 600; color: var(--text); }
 .toc-row[data-depth="2"] .toc-jump { padding-left: 16px; color: var(--text); }
@@ -824,7 +823,7 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha384-Rp3zDb+pEKMdYa2E5V6xwTVmV2gmnAsQfPWJF9tRl68m9p/WNPtNBGw2jS6jTAph" crossorigin="anonymous"></script>
 <script>
-const APP_VERSION = 'v1.2';
+const APP_VERSION = 'v1.2.1';
 
 function parseMarkdown(src) {
   const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
