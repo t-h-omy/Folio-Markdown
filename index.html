@@ -1073,6 +1073,22 @@ editor.addEventListener('input',()=>{
   if(rn){editor.value=rn.val;editor.selectionStart=editor.selectionEnd=rn.cursorPos;}
   showContent(); setDirty(true); renderPreview(); updateStats(); scheduleSaveDraft();
 });
+editor.addEventListener('beforeinput',e=>{
+  if((e.inputType==='insertLineBreak'||e.inputType==='insertParagraph')&&editor.selectionStart===editor.selectionEnd){
+    const s=editor.selectionStart;
+    const val=editor.value;
+    const ls=val.lastIndexOf('\n',s-1)+1;
+    const le=val.indexOf('\n',s);
+    const lineEnd=le===-1?val.length:le;
+    const fullLine=val.slice(ls,lineEnd);
+    const ulMatch=fullLine.match(/^([-*+]) /);
+    const olMatch=fullLine.match(/^(\d+)\.(\s+)/);
+    if(ulMatch||olMatch){
+      const prefix=ulMatch?ulMatch[0]:olMatch[0];
+      if(s>=ls+prefix.length) e.preventDefault();
+    }
+  }
+});
 editor.addEventListener('keyup',updateCursor);
 editor.addEventListener('click',updateCursor);
 editor.addEventListener('focus',showContent);
