@@ -961,7 +961,7 @@ function renderPreview(){
   preview.querySelectorAll('pre').forEach(pre=>{
     const code=pre.querySelector('code'); if(!code) return;
     const lang=(code.className.match(/lang-(\w+)/)||[])[1]||'';
-    hljs.highlightElement(code);
+    if(typeof hljs!=='undefined') hljs.highlightElement(code);
     const header=document.createElement('div'); header.className='code-block-header';
     const label=document.createElement('span'); label.textContent=lang||'plaintext';
     const copyBtn=document.createElement('button'); copyBtn.className='code-copy-btn'; copyBtn.textContent='Copy';
