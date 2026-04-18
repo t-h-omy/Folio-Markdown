@@ -837,6 +837,28 @@ function parseMarkdown(src) {
     .replace(/~~(.+?)~~/g,'<del>$1</del>')
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img src="$2" alt="$1">')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const minInd=arr=>{let m=Infinity;arr.forEach(l=>{const r=l.match(/^( *)/);if(r)m=Math.min(m,r[1].length);});return m===Infinity?0:m;};
+  const parseBlock=(arr,base)=>{
+    let out='',j=0,ctag=null;
+    while(j<arr.length){
+      const lx=arr[j];
+      const mx=lx.match(/^( *)([-*+]|\d+\.)\s+(.*)/);
+      if(!mx){j++;continue;}
+      const ind=mx[1].length;
+      if(ind<base)break;
+      if(ind>base){j++;continue;}
+      const isOl=/^\d+\./.test(mx[2]);
+      const t=isOl?'ol':'ul';
+      if(t!==ctag){if(ctag)out+='</'+ctag+'>';out+='<'+t+'>';ctag=t;}
+      const subArr=[];j++;
+      while(j<arr.length){const sx=arr[j];const sm=sx.match(/^( *)([-*+]|\d+\.)\s/);if(!sm||sm[1].length<=base)break;subArr.push(sx);j++;}
+      out+='<li>'+inline(mx[3]);
+      if(subArr.length)out+=parseBlock(subArr,minInd(subArr));
+      out+='</li>';
+    }
+    if(ctag)out+='</'+ctag+'>';
+    return out;
+  };
   const lines=src.split('\n'); let html='',i=0;
   while(i<lines.length){
     const line=lines[i];
@@ -853,15 +875,10 @@ function parseMarkdown(src) {
       while(i<lines.length&&/^>\s?/.test(lines[i])){bq+=lines[i].replace(/^>\s?/,'')+'\n';i++;}
       html+='<blockquote>'+parseMarkdown(bq.trim())+'</blockquote>'; continue;
     }
-    if(/^[-*+]\s/.test(line)){
-      html+='<ul>';
-      while(i<lines.length&&/^[-*+]\s/.test(lines[i])){html+='<li>'+inline(lines[i].replace(/^[-*+]\s/,''))+'</li>';i++;}
-      html+='</ul>'; continue;
-    }
-    if(/^\d+\.\s/.test(line)){
-      html+='<ol>';
-      while(i<lines.length&&/^\d+\.\s/.test(lines[i])){html+='<li>'+inline(lines[i].replace(/^\d+\.\s/,''))+'</li>';i++;}
-      html+='</ol>'; continue;
+    if(/^[ \t]*([-*+]|\d+\.)\s/.test(line)){
+      const listLines=[];
+      while(i<lines.length&&/^[ \t]*([-*+]|\d+\.)\s/.test(lines[i])){listLines.push(lines[i]);i++;}
+      html+=parseBlock(listLines,minInd(listLines)); continue;
     }
     if(/\|/.test(line)&&i+1<lines.length&&/^\|?[-:| ]+\|/.test(lines[i+1])){
       const rh=line.replace(/^\|/,'').replace(/\|$/,'').split('|').map(h=>h.trim());
@@ -876,7 +893,7 @@ function parseMarkdown(src) {
     }
     if(!line.trim()){i++; continue;}
     let para='';
-    while(i<lines.length&&lines[i].trim()&&!/^(#{1,6}\s|>|[-*+]\s|\d+\.\s|```|[-*_]{3,}\s*$)/.test(lines[i])){
+    while(i<lines.length&&lines[i].trim()&&!/^(#{1,6}\s|>|[ \t]*([-*+]|\d+\.)\s|```|[-*_]{3,}\s*$)/.test(lines[i])){
       para+=(para?' ':'')+lines[i].trim(); i++;
     }
     if(para) html+='<p>'+inline(para)+'</p>';
@@ -1205,18 +1222,21 @@ document.getElementById('md-toolbar').addEventListener('click',e=>{
 
 function renumberOrderedLists(val,cursorPos){
   const lines=val.split('\n');
-  let counter=0,changed=false,pos=0,newCursor=cursorPos;
+  const counters={};
+  let changed=false,pos=0,newCursor=cursorPos;
   for(let i=0;i<lines.length;i++){
-    const m=lines[i].match(/^(\d+)(\.\s+)/);
+    const m=lines[i].match(/^( *)(\d+)(\.\s+)/);
     if(m){
-      counter++;
-      const oldNum=m[1],newNum=String(counter);
+      const ind=m[1].length;
+      Object.keys(counters).forEach(k=>{if(Number(k)>ind)delete counters[k];});
+      counters[ind]=(counters[ind]||0)+1;
+      const oldNum=m[2],newNum=String(counters[ind]);
       if(oldNum!==newNum){
-        lines[i]=newNum+m[2]+lines[i].slice(m[0].length);
+        lines[i]=m[1]+newNum+m[3]+lines[i].slice(m[0].length);
         changed=true;
         if(pos<newCursor) newCursor+=newNum.length-oldNum.length;
       }
-    }else{counter=0;}
+    }else{Object.keys(counters).forEach(k=>delete counters[k]);}
     pos+=lines[i].length+1;
   }
   return changed?{val:lines.join('\n'),cursorPos:Math.max(0,newCursor)}:null;
@@ -1235,8 +1255,8 @@ editor.addEventListener('beforeinput',e=>{
     const le=val.indexOf('\n',s);
     const lineEnd=le===-1?val.length:le;
     const fullLine=val.slice(ls,lineEnd);
-    const ulMatch=fullLine.match(/^([-*+]) /);
-    const olMatch=fullLine.match(/^(\d+)\.(\s+)/);
+    const ulMatch=fullLine.match(/^(\s*[-*+]) /);
+    const olMatch=fullLine.match(/^(\s*\d+\.)(\s+)/);
     if(ulMatch||olMatch){
       const prefix=ulMatch?ulMatch[0]:olMatch[0];
       if(s>=ls+prefix.length) e.preventDefault();
@@ -1262,8 +1282,8 @@ editor.addEventListener('keydown',e=>{
     const le=val.indexOf('\n',s);
     const lineEnd=le===-1?val.length:le;
     const fullLine=val.slice(ls,lineEnd);
-    const ulMatch=fullLine.match(/^([-*+]) /);
-    const olMatch=fullLine.match(/^(\d+)\.(\s+)/);
+    const ulMatch=fullLine.match(/^(\s*[-*+]) /);
+    const olMatch=fullLine.match(/^(\s*)(\d+)\.(\s+)/);
     if(ulMatch||olMatch){
       const prefix=ulMatch?ulMatch[0]:olMatch[0];
       const content=fullLine.slice(prefix.length);
@@ -1289,7 +1309,7 @@ editor.addEventListener('keydown',e=>{
         // Continue ordered list; move text after cursor to new item.
         // trimStart prevents a double-space when cursor is on whitespace between words.
         const tail=val.slice(s,lineEnd).trimStart();
-        const ins='\n'+(parseInt(olMatch[1],10)+1)+'.'+olMatch[2]+tail;
+        const ins='\n'+olMatch[1]+(parseInt(olMatch[2],10)+1)+'.'+olMatch[3]+tail;
         editor.value=val.slice(0,s)+ins+val.slice(lineEnd);
         editor.selectionStart=editor.selectionEnd=s+ins.length-tail.length;
         const rn=renumberOrderedLists(editor.value,editor.selectionStart);
