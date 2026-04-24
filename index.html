@@ -204,7 +204,7 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
   #desktop-view-toggle { display: flex !important; }
   #btn-menu   { display: none; }
 
-  #main { overflow: visible; }
+  #main { overflow: hidden; }
   .pane {
     position: relative;
     inset: auto;
@@ -392,6 +392,10 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
   color: var(--muted);
 }
 #statusbar .accent { color: var(--accent); }
+
+/* DESKTOP OPEN/NEW BUTTONS */
+#btn-open, #btn-new { display: none; }
+@media (min-width: 768px) { #btn-open, #btn-new { display: flex; } }
 
 /* DESKTOP VIEW TOGGLE */
 #desktop-view-toggle {
@@ -645,6 +649,13 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
     </div>
     <div id="dirty-dot"></div>
   </div>
+
+  <button class="icon-btn" id="btn-open" aria-label="Open file" title="Open file (Ctrl+O)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+  </button>
+  <button class="icon-btn" id="btn-new" aria-label="New file" title="New file (Ctrl+N)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+  </button>
 
   <button class="icon-btn" id="btn-save" aria-label="Save">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -1331,6 +1342,8 @@ document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>
 document.querySelectorAll('.dvt-btn').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
 
 document.getElementById('btn-save').addEventListener('click',saveFile);
+document.getElementById('btn-open').addEventListener('click',openFile);
+document.getElementById('btn-new').addEventListener('click',newFile);
 document.getElementById('nav-open').addEventListener('click',openFile);
 document.getElementById('nav-new').addEventListener('click',newFile);
 document.getElementById('nav-save').addEventListener('click',saveFile);
