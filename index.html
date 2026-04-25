@@ -860,28 +860,29 @@ function parseMarkdown(src) {
   };
   const lines=src.split('\n'); let html='',i=0;
   while(i<lines.length){
-    const line=lines[i];
+    const line=lines[i]; const sl=i;
     if(/^```/.test(line)){
       const lang=line.slice(3).trim(); let code=''; i++;
       while(i<lines.length&&!/^```/.test(lines[i])){code+=escape(lines[i])+'\n';i++;}
-      html+='<pre><code'+(lang?' class="lang-'+lang+'"':'')+'>'+code+'</code></pre>'; i++; continue;
+      html+='<pre data-source-line="'+sl+'"><code'+(lang?' class="lang-'+lang+'"':'')+'>'+code+'</code></pre>'; i++; continue;
     }
     const hm=line.match(/^(#{1,6})\s+(.*)/);
-    if(hm){html+='<h'+hm[1].length+'>'+inline(hm[2])+'</h'+hm[1].length+'>'; i++; continue;}
-    if(/^[-*_]{3,}\s*$/.test(line)){html+='<hr>'; i++; continue;}
+    if(hm){html+='<h'+hm[1].length+' data-source-line="'+sl+'">'+inline(hm[2])+'</h'+hm[1].length+'>'; i++; continue;}
+    if(/^[-*_]{3,}\s*$/.test(line)){html+='<hr data-source-line="'+sl+'">'; i++; continue;}
     if(/^>\s?/.test(line)){
       let bq='';
       while(i<lines.length&&/^>\s?/.test(lines[i])){bq+=lines[i].replace(/^>\s?/,'')+'\n';i++;}
-      html+='<blockquote>'+parseMarkdown(bq.trim())+'</blockquote>'; continue;
+      html+='<blockquote data-source-line="'+sl+'">'+parseMarkdown(bq.trim())+'</blockquote>'; continue;
     }
     if(/^[ \t]*([-*+]|\d+\.)\s/.test(line)){
       const listLines=[];
       while(i<lines.length&&/^[ \t]*([-*+]|\d+\.)\s/.test(lines[i])){listLines.push(lines[i]);i++;}
-      html+=parseBlock(listLines,minInd(listLines)); continue;
+      const listHtml=parseBlock(listLines,minInd(listLines));
+      html+=listHtml.replace(/^<(ul|ol)>/,'<$1 data-source-line="'+sl+'">'); continue;
     }
     if(/\|/.test(line)&&i+1<lines.length&&/^\|?[-:| ]+\|/.test(lines[i+1])){
       const rh=line.replace(/^\|/,'').replace(/\|$/,'').split('|').map(h=>h.trim());
-      i+=2; html+='<table><thead><tr>';
+      i+=2; html+='<table data-source-line="'+sl+'"><thead><tr>';
       rh.forEach(h=>html+='<th>'+inline(h)+'</th>');
       html+='</tr></thead><tbody>';
       while(i<lines.length&&/\|/.test(lines[i])&&lines[i].trim()){
@@ -895,7 +896,7 @@ function parseMarkdown(src) {
     while(i<lines.length&&lines[i].trim()&&!/^(#{1,6}\s|>|[ \t]*([-*+]|\d+\.)\s|```|[-*_]{3,}\s*$)/.test(lines[i])){
       para+=(para?' ':'')+lines[i].trim(); i++;
     }
-    if(para) html+='<p>'+inline(para)+'</p>';
+    if(para) html+='<p data-source-line="'+sl+'">'+inline(para)+'</p>';
   }
   return html;
 }
@@ -1059,6 +1060,7 @@ function setView(v){
   document.querySelectorAll('.dvt-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
   if(v!=='editor') renderPreview();
   if(v==='contents') renderToc();
+  if(v==='split') requestAnimationFrame(_syncPreviewFromEditor);
 }
 
 function openFile(){
@@ -1355,6 +1357,56 @@ mainEl.addEventListener('touchend',e=>{
     if(currentView==='preview')      setView('editor');
     else if(currentView==='editor')  setView('contents');
   }
+},{passive:true});
+
+// Split-view synchronized scrolling
+const previewPane=document.getElementById('preview-pane');
+let _scrollSyncing=false, _scrollSyncTimer=null;
+
+function _syncPreviewFromEditor(){
+  const totalLines=editor.value.split('\n').length||1;
+  const lineHeight=editor.scrollHeight/totalLines;
+  const firstVisibleLine=Math.floor(editor.scrollTop/lineHeight);
+  const elems=preview.querySelectorAll('[data-source-line]');
+  let target=null;
+  for(const el of elems){
+    if(parseInt(el.dataset.sourceLine,10)<=firstVisibleLine) target=el;
+    else break;
+  }
+  const elRect=(target||preview).getBoundingClientRect();
+  const paneRect=previewPane.getBoundingClientRect();
+  previewPane.scrollTop+=elRect.top-paneRect.top;
+}
+
+function _syncEditorFromPreview(){
+  const paneRect=previewPane.getBoundingClientRect();
+  const elems=preview.querySelectorAll('[data-source-line]');
+  let topEl=null;
+  for(const el of elems){
+    const r=el.getBoundingClientRect();
+    if(r.bottom>paneRect.top){topEl=el;break;}
+  }
+  if(!topEl) return;
+  const sourceLine=parseInt(topEl.dataset.sourceLine,10);
+  const totalLines=editor.value.split('\n').length||1;
+  const lineHeight=editor.scrollHeight/totalLines;
+  editor.scrollTop=sourceLine*lineHeight;
+}
+
+editor.addEventListener('scroll',()=>{
+  if(currentView!=='split'||_scrollSyncing) return;
+  _scrollSyncing=true;
+  _syncPreviewFromEditor();
+  clearTimeout(_scrollSyncTimer);
+  _scrollSyncTimer=setTimeout(()=>{_scrollSyncing=false;},50);
+},{passive:true});
+
+previewPane.addEventListener('scroll',()=>{
+  if(currentView!=='split'||_scrollSyncing) return;
+  _scrollSyncing=true;
+  _syncEditorFromPreview();
+  clearTimeout(_scrollSyncTimer);
+  _scrollSyncTimer=setTimeout(()=>{_scrollSyncing=false;},50);
 },{passive:true});
 
 document.addEventListener('dragover',e=>e.preventDefault());
