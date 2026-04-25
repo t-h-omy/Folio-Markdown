@@ -189,7 +189,7 @@ body {
 }
 #toc-pane     { transform: translateX(-100%); opacity: 0; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 #editor-pane  { transform: translateX(0);    opacity: 1; }
-#preview-pane { transform: translateX(100%); opacity: 0; background: var(--preview-bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+#preview-pane { transform: translateX(100%); opacity: 0; background: var(--preview-bg); overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
 
 body.view-contents #toc-pane     { transform: translateX(0);      opacity: 1; pointer-events: all; }
 body.view-contents #editor-pane  { transform: translateX(100%);   opacity: 0; pointer-events: none; }
@@ -292,6 +292,8 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
   font-size: 16px;
   line-height: 1.8;
   color: var(--text);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 @media (min-width: 768px) {
   #preview-content { padding: 40px; font-size: 15.5px; }
