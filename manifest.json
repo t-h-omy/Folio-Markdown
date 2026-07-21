@@ -1,7 +1,7 @@
 {
   "name": "Folio — Markdown Editor",
   "short_name": "Folio",
-  "description": "A distraction-free markdown editor",
+  "description": "A distraction-free markdown editor with easy chapter copying from contents mode",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1a1a18",
