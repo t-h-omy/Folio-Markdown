@@ -1,6 +1,6 @@
 # Folio — Markdown Editor
 
-A distraction-free PWA markdown editor with split-pane live preview.
+A distraction-free PWA markdown editor with split-pane live preview and easy chapter copying from contents mode.
 
 ## Files
 - `index.html` — Main app (self-contained)
@@ -32,6 +32,7 @@ Then visit `http://localhost:8080` — you'll see an install prompt in the brows
 - **Open** `.md`, `.markdown`, `.txt` files via File System Access API (or classic `<input>`)
 - **Save** back to the original file in-place (where supported) or download
 - **Split / Edit / Preview** view modes with draggable divider
+- **Contents mode chapter copy**: copy full chapters without selecting individual lines
 - **Drag & drop** `.md` files onto the window
 - **Keyboard shortcuts**: `Ctrl+S` save, `Ctrl+O` open, `Ctrl+N` new
 - **Live stats**: word count, character count, line count, cursor position

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#1a1a18">
-<meta name="description" content="A clean, distraction-free markdown editor">
+<meta name="description" content="A clean, distraction-free markdown editor with easy chapter copying from contents mode">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
@@ -286,13 +286,15 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
 /* PREVIEW */
 #preview-content {
   max-width: 700px;
+  width: 100%;
+  min-width: 0;
   margin: 0 auto;
   padding: 24px 18px calc(24px + var(--safe-bottom));
   font-family: var(--serif);
   font-size: 16px;
   line-height: 1.8;
   color: var(--text);
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 @media (min-width: 768px) {
@@ -824,7 +826,7 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha384-Rp3zDb+pEKMdYa2E5V6xwTVmV2gmnAsQfPWJF9tRl68m9p/WNPtNBGw2jS6jTAph" crossorigin="anonymous"></script>
 <script>
-const APP_VERSION = 'v1.2.2';
+const APP_VERSION = 'v1.2.3';
 
 function parseMarkdown(src) {
   const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
