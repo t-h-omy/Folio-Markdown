@@ -1362,11 +1362,11 @@ document.getElementById('sheet-save').addEventListener('click',saveFile);
 // Swipe left/right to switch views (mobile only)
 const MIN_SWIPE_DISTANCE = 60;
 const MAX_VERTICAL_RATIO = .75;
-let touchStartX = 0, touchStartY = 0, toolbarTouch = false;
+let touchStartX = null, touchStartY = null, toolbarTouch = false;
 const mainEl=document.getElementById('main');
 function resetMainTouchState() {
-  touchStartX = 0;
-  touchStartY = 0;
+  touchStartX = null;
+  touchStartY = null;
   toolbarTouch = false;
 }
 mainEl.addEventListener('touchstart',e=>{
@@ -1376,6 +1376,10 @@ mainEl.addEventListener('touchstart',e=>{
 },{passive:true});
 mainEl.addEventListener('touchend',e=>{
   if (toolbarTouch) {
+    resetMainTouchState();
+    return;
+  }
+  if(touchStartX===null||touchStartY===null){
     resetMainTouchState();
     return;
   }
