@@ -1368,9 +1368,10 @@ mainEl.addEventListener('touchstart',e=>{
   toolbarTouch = e.target.closest('#md-toolbar') !== null;
 },{passive:true});
 mainEl.addEventListener('touchend',e=>{
-  const startedInToolbar = toolbarTouch;
-  toolbarTouch = false;
-  if (startedInToolbar) return;
+  if (toolbarTouch) {
+    toolbarTouch = false;
+    return;
+  }
   const dx=e.changedTouches[0].clientX-touchStartX, dy=e.changedTouches[0].clientY-touchStartY;
   if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)*.75) return;
   if(window.innerWidth>=768) return;
