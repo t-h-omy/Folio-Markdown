@@ -1360,12 +1360,12 @@ document.getElementById('sheet-new').addEventListener('click',newFile);
 document.getElementById('sheet-save').addEventListener('click',saveFile);
 
 // Swipe left/right to switch views (mobile only)
-let tx=0,ty=0, swipeStartedInToolbar=false;
+let tx=0, ty=0, swipeStartedInToolbar=false;
 const mainEl=document.getElementById('main');
 mainEl.addEventListener('touchstart',e=>{
   tx=e.touches[0].clientX;
   ty=e.touches[0].clientY;
-  swipeStartedInToolbar=!!e.target.closest('#md-toolbar');
+  swipeStartedInToolbar=e.target.closest('#md-toolbar')!==null;
 },{passive:true});
 mainEl.addEventListener('touchend',e=>{
   if(swipeStartedInToolbar){
