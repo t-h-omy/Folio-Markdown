@@ -1383,6 +1383,7 @@ mainEl.addEventListener('touchend',e=>{
     else if(currentView==='editor')  setView('contents');
   }
 },{passive:true});
+mainEl.addEventListener('touchcancel',()=>{toolbarTouch=false;},{passive:true});
 
 // Split-view synchronized scrolling
 const previewPane=document.getElementById('preview-pane');
