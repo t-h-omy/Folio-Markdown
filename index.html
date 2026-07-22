@@ -826,7 +826,7 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha384-Rp3zDb+pEKMdYa2E5V6xwTVmV2gmnAsQfPWJF9tRl68m9p/WNPtNBGw2jS6jTAph" crossorigin="anonymous"></script>
 <script>
-const APP_VERSION = 'v1.2.3';
+const APP_VERSION = 'v1.3.0';
 
 function parseMarkdown(src) {
   const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1058,6 +1058,18 @@ function renderToc(){
 }
 
 function setView(v){
+  const prevView=currentView;
+
+  // Capture scroll anchor BEFORE switching so source pane is still laid out
+  let anchorLine=null;
+  if(v==='preview'&&prevView==='editor'){
+    const totalLines=editor.value.split('\n').length||1;
+    const lh=editor.scrollHeight/totalLines;
+    anchorLine=lh>0?Math.floor(editor.scrollTop/lh):0;
+  } else if(v==='editor'&&prevView==='preview'){
+    anchorLine=_getTopSourceLineFromPreview();
+  }
+
   currentView=v;
   document.body.className='view-'+v;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
@@ -1065,6 +1077,7 @@ function setView(v){
   if(v!=='editor') renderPreview();
   if(v==='contents') renderToc();
   if(v==='split') requestAnimationFrame(_syncPreviewFromEditor);
+  if(anchorLine!==null) requestAnimationFrame(()=>_scrollToSourceLine(v,anchorLine));
 }
 
 function openFile(){
@@ -1395,6 +1408,36 @@ function _syncEditorFromPreview(){
   const totalLines=editor.value.split('\n').length||1;
   const lineHeight=editor.scrollHeight/totalLines;
   editor.scrollTop=sourceLine*lineHeight;
+}
+
+// Returns the source line number of the topmost visible element in the preview pane
+function _getTopSourceLineFromPreview(){
+  const paneRect=previewPane.getBoundingClientRect();
+  const elems=preview.querySelectorAll('[data-source-line]');
+  for(const el of elems){
+    if(el.getBoundingClientRect().bottom>paneRect.top)
+      return parseInt(el.dataset.sourceLine,10);
+  }
+  return null;
+}
+
+// Scrolls the target view pane so that `line` appears at the top
+function _scrollToSourceLine(targetView,line){
+  if(targetView==='preview'){
+    const elems=preview.querySelectorAll('[data-source-line]');
+    let target=null;
+    for(const el of elems){
+      if(parseInt(el.dataset.sourceLine,10)<=line) target=el;
+      else break;
+    }
+    if(target){
+      const paneRect=previewPane.getBoundingClientRect();
+      previewPane.scrollTop+=target.getBoundingClientRect().top-paneRect.top;
+    }
+  } else if(targetView==='editor'){
+    const totalLines=editor.value.split('\n').length||1;
+    editor.scrollTop=line*(editor.scrollHeight/totalLines);
+  }
 }
 
 editor.addEventListener('scroll',()=>{
