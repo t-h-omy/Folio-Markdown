@@ -1360,6 +1360,8 @@ document.getElementById('sheet-new').addEventListener('click',newFile);
 document.getElementById('sheet-save').addEventListener('click',saveFile);
 
 // Swipe left/right to switch views (mobile only)
+const MIN_SWIPE_DISTANCE = 60;
+const MAX_VERTICAL_RATIO = .75;
 let touchStartX = 0, touchStartY = 0, toolbarTouch = false;
 const mainEl=document.getElementById('main');
 function resetMainTouchState() {
@@ -1378,10 +1380,14 @@ mainEl.addEventListener('touchend',e=>{
     return;
   }
   const dx = e.changedTouches[0].clientX - touchStartX, dy = e.changedTouches[0].clientY - touchStartY;
-  // Clear touch state before the gesture threshold checks below.
-  resetMainTouchState();
-  if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)*.75) return;
-  if(window.innerWidth>=768) return;
+  if(Math.abs(dx)<MIN_SWIPE_DISTANCE||Math.abs(dy)>Math.abs(dx)*MAX_VERTICAL_RATIO){
+    resetMainTouchState();
+    return;
+  }
+  if(window.innerWidth>=768){
+    resetMainTouchState();
+    return;
+  }
   if(dx<0){
     if(currentView==='contents')     setView('editor');
     else if(currentView==='editor')  setView('preview');
@@ -1389,6 +1395,7 @@ mainEl.addEventListener('touchend',e=>{
     if(currentView==='preview')      setView('editor');
     else if(currentView==='editor')  setView('contents');
   }
+  resetMainTouchState();
 },{passive:true});
 mainEl.addEventListener('touchcancel',resetMainTouchState,{passive:true});
 
