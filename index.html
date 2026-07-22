@@ -1363,9 +1363,9 @@ document.getElementById('sheet-save').addEventListener('click',saveFile);
 let touchStartX = 0, touchStartY = 0, toolbarTouch = false;
 const mainEl=document.getElementById('main');
 function resetMainTouchState(){
-  touchStartX=0;
-  touchStartY=0;
-  toolbarTouch=false;
+  touchStartX = 0;
+  touchStartY = 0;
+  toolbarTouch = false;
 }
 mainEl.addEventListener('touchstart',e=>{
   touchStartX = e.touches[0].clientX;
@@ -1377,7 +1377,7 @@ mainEl.addEventListener('touchend',e=>{
     resetMainTouchState();
     return;
   }
-  const dx=e.changedTouches[0].clientX-touchStartX, dy=e.changedTouches[0].clientY-touchStartY;
+  const dx = e.changedTouches[0].clientX - touchStartX, dy = e.changedTouches[0].clientY - touchStartY;
   resetMainTouchState();
   if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)*.75) return;
   if(window.innerWidth>=768) return;
