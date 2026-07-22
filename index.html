@@ -1378,7 +1378,7 @@ mainEl.addEventListener('touchend',e=>{
     return;
   }
   const dx = e.changedTouches[0].clientX - touchStartX, dy = e.changedTouches[0].clientY - touchStartY;
-  // Clear touch state before any later early returns.
+  // Clear touch state before the gesture threshold checks below.
   resetMainTouchState();
   if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)*.75) return;
   if(window.innerWidth>=768) return;
