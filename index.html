@@ -219,6 +219,19 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
   body.view-preview  #toc-pane     { display: none; }
   body.view-contents #editor-pane  { display: none; }
   body.view-contents #preview-pane { display: none; }
+  body.view-split #toc-pane        { display: none; }
+  body.view-split #editor-pane,
+  body.view-split #preview-pane {
+    display: flex;
+    flex: 0 0 50%;
+    max-width: 50%;
+    min-width: 0;
+  }
+  body.view-split #preview-content {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+  }
 }
 
 /* EDITOR */
@@ -826,7 +839,7 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha384-Rp3zDb+pEKMdYa2E5V6xwTVmV2gmnAsQfPWJF9tRl68m9p/WNPtNBGw2jS6jTAph" crossorigin="anonymous"></script>
 <script>
-const APP_VERSION = 'v1.3.0';
+const APP_VERSION = 'v1.3.1';
 
 function parseMarkdown(src) {
   const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
