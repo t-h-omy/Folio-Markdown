@@ -356,6 +356,8 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
 #preview-content ul,#preview-content ol { padding-left: 1.5em; margin: .7em 0; }
 #preview-content li { margin: .25em 0; }
 #preview-content li::marker { color: var(--accent); }
+#preview-content li.task-item { list-style: none; margin-left: -1.2em; }
+#preview-content input.task-checkbox { cursor: pointer; accent-color: var(--accent); width: .9em; height: .9em; vertical-align: middle; margin-right: .4em; margin-top: -.1em; }
 #preview-content hr { border: none; border-top: 1px solid var(--border); margin: 1.8em 0; }
 #preview-content table { width: 100%; border-collapse: collapse; margin: 1.1em 0; font-size: .9em; }
 #preview-content th { background: var(--surface); color: var(--accent); font-family: var(--mono); font-size: .82em; text-align: left; padding: .5em .8em; border: 1px solid var(--border); }
@@ -839,7 +841,7 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha384-Rp3zDb+pEKMdYa2E5V6xwTVmV2gmnAsQfPWJF9tRl68m9p/WNPtNBGw2jS6jTAph" crossorigin="anonymous"></script>
 <script>
-const APP_VERSION = 'v1.3.1';
+const APP_VERSION = 'v1.4.0';
 
 function parseMarkdown(src) {
   const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -853,11 +855,12 @@ function parseMarkdown(src) {
     .replace(/~~(.+?)~~/g,'<del>$1</del>')
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img src="$2" alt="$1">')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
-  const minInd=arr=>{let m=Infinity;arr.forEach(l=>{const r=l.match(/^( *)/);if(r)m=Math.min(m,r[1].length);});return m===Infinity?0:m;};
+  const minInd=arr=>{let m=Infinity;arr.forEach(l=>{const t=typeof l==='string'?l:l.text;const r=t.match(/^( *)/);if(r)m=Math.min(m,r[1].length);});return m===Infinity?0:m;};
   const parseBlock=(arr,base)=>{
     let out='',j=0,ctag=null;
     while(j<arr.length){
-      const lx=arr[j];
+      const lx=typeof arr[j]==='string'?arr[j]:arr[j].text;
+      const srcLine=typeof arr[j]==='string'?null:arr[j].lineIdx;
       const mx=lx.match(/^( *)([-*+]|\d+\.)\s+(.*)/);
       if(!mx){j++;continue;}
       const ind=mx[1].length;
@@ -867,8 +870,15 @@ function parseMarkdown(src) {
       const t=isOl?'ol':'ul';
       if(t!==ctag){if(ctag)out+='</'+ctag+'>';out+='<'+t+'>';ctag=t;}
       const subArr=[];j++;
-      while(j<arr.length){const sx=arr[j];const sm=sx.match(/^( *)([-*+]|\d+\.)\s/);if(!sm||sm[1].length<=base)break;subArr.push(sx);j++;}
-      out+='<li>'+inline(mx[3]);
+      while(j<arr.length){const sx=typeof arr[j]==='string'?arr[j]:arr[j].text;const sm=sx.match(/^( *)([-*+]|\d+\.)\s/);if(!sm||sm[1].length<=base)break;subArr.push(arr[j]);j++;}
+      let content=mx[3]; let liClass=''; let cbHtml='';
+      const cbm=content.match(/^\[([ xX])\]\s+(.*)/);
+      if(cbm&&srcLine!==null){
+        const checked=cbm[1].toLowerCase()==='x';
+        cbHtml='<input type="checkbox" class="task-checkbox" data-line="'+srcLine+'"'+(checked?' checked':'')+'>';
+        content=cbm[2]; liClass=' class="task-item"';
+      }
+      out+='<li'+liClass+'>'+cbHtml+inline(content);
       if(subArr.length)out+=parseBlock(subArr,minInd(subArr));
       out+='</li>';
     }
@@ -893,7 +903,7 @@ function parseMarkdown(src) {
     }
     if(/^[ \t]*([-*+]|\d+\.)\s/.test(line)){
       const listLines=[];
-      while(i<lines.length&&/^[ \t]*([-*+]|\d+\.)\s/.test(lines[i])){listLines.push(lines[i]);i++;}
+      while(i<lines.length&&/^[ \t]*([-*+]|\d+\.)\s/.test(lines[i])){listLines.push({text:lines[i],lineIdx:i});i++;}
       const listHtml=parseBlock(listLines,minInd(listLines));
       html+=listHtml.replace(/^<(ul|ol)>/,'<$1 data-source-line="'+sl+'">'); continue;
     }
@@ -1008,6 +1018,19 @@ function renderPreview(){
     header.appendChild(label); header.appendChild(copyBtn);
     const wrap=document.createElement('div'); wrap.className='code-block-wrap';
     pre.parentNode.insertBefore(wrap,pre); wrap.appendChild(header); wrap.appendChild(pre);
+  });
+  preview.querySelectorAll('input.task-checkbox').forEach(cb=>{
+    cb.addEventListener('change',()=>{
+      const lineIdx=parseInt(cb.dataset.line);
+      const lines=editor.value.split('\n');
+      if(cb.checked){
+        lines[lineIdx]=lines[lineIdx].replace(/^(\s*(?:[-*+]|\d+\.)\s+)\[ \]/,'$1[x]');
+      } else {
+        lines[lineIdx]=lines[lineIdx].replace(/^(\s*(?:[-*+]|\d+\.)\s+)\[[xX]\]/,'$1[ ]');
+      }
+      editor.value=lines.join('\n');
+      setDirty(true); scheduleSaveDraft(); updateStats(); renderPreview();
+    });
   });
 }
 function showContent(){emptyState.classList.add('hidden');}
