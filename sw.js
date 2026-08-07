@@ -1,4 +1,4 @@
-const CACHE_NAME = 'folio-v1.3.1';
+const CACHE_NAME = 'folio-v1.4.0';
 const ASSETS = [
   './',
   './index.html',
@@ -21,30 +21,16 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(keys.map(key => {
+        if(key !== CACHE_NAME) return caches.delete(key);
+      }))
     ).then(() => self.clients.claim())
   );
 });
 
-// Fetch: cache-first for app shell, network-first for fonts
+// Fetch: serve from cache, fallback to network
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') return;
-
-  // Network-first for Google Fonts and highlight.js CDN (dynamic assets)
-  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com' || url.hostname === 'cdnjs.cloudflare.com') {
-    event.respondWith(
-      fetch(event.request)
-        .then(res => { const clone = res.clone(); caches.open(CACHE_NAME).then(c => c.put(event.request, clone)); return res; })
-        .catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  // Cache-first for everything else
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    caches.match(event.request).then(response => response || fetch(event.request))
   );
 });
