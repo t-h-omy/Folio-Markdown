@@ -989,7 +989,7 @@ function parseMarkdown(src) {
 }
 
 let fileHandle=null, isDirty=false, currentView='editor';
-let hasLoadedLaunchFile=false;
+let allowLaunchOverrideOnce=false;
 
 // --- Draft persistence (survive device memory clearing) ---
 const DRAFT_KEY='folio_draft';
@@ -1011,6 +1011,7 @@ function restoreDraft(){
     if(!raw)return;
     const d=JSON.parse(raw);
     if(!d||typeof d.content!=='string'||!d.content)return;
+    allowLaunchOverrideOnce=true;
     editor.value=d.content;
     setFilename(d.filename||'untitled');
     setDirty(!!d.dirty);
@@ -1049,6 +1050,7 @@ async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
     editor.value=content;
     setFilename(nextName);
     fileHandle=handle;
+    allowLaunchOverrideOnce=false;
     setDirty(false); renderPreview(); updateStats(); showContent();
     saveDraft(); showToast(toastMessage,'success');
   }catch(e){
@@ -1060,28 +1062,21 @@ async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
     throw e;
   }
 }
-
-let _resolveInitialLaunch=null;
-const initialLaunchHandled=new Promise(resolve=>{_resolveInitialLaunch=resolve;});
-function settleInitialLaunch(){
-  if(_resolveInitialLaunch){_resolveInitialLaunch(); _resolveInitialLaunch=null;}
-}
 function registerLaunchFileHandler(){
-  if(!('launchQueue' in window)||typeof window.launchQueue.setConsumer!=='function'){
-    settleInitialLaunch();
-    return;
-  }
+  if(!('launchQueue' in window)||typeof window.launchQueue.setConsumer!=='function') return;
   window.launchQueue.setConsumer(async launchParams=>{
     const handle=launchParams&&Array.isArray(launchParams.files)?launchParams.files[0]:null;
-    if(!handle){settleInitialLaunch(); return;}
+    if(!handle) return;
     try{
       const file=await handle.getFile();
-      if(!/\.(md|markdown|txt)$/i.test(file.name)){settleInitialLaunch(); return;}
+      if(!/\.(md|markdown|txt)$/i.test(file.name)) return;
       const openLaunchFile=async()=>{
-        hasLoadedLaunchFile=true;
         await loadFileIntoEditor(file,{handle,toastMessage:'Opened'});
       };
-      if(isDirty&&editor.value.trim()){
+      if(allowLaunchOverrideOnce){
+        allowLaunchOverrideOnce=false;
+        await openLaunchFile();
+      } else if(isDirty&&editor.value.trim()){
         confirmDiscard(()=>openLaunchFile().catch(e=>{
           console.error('Launch open failed:',e);
           showToast('Could not open','error');
@@ -1092,11 +1087,8 @@ function registerLaunchFileHandler(){
     }catch(e){
       console.error('Launch open failed:',e);
       showToast('Could not open','error');
-    }finally{
-      settleInitialLaunch();
     }
   });
-  setTimeout(settleInitialLaunch,300);
 }
 // ---
 
@@ -1444,6 +1436,7 @@ function isThematicBreakLine(line){
 editor.addEventListener('input',()=>{
   const rn=renumberOrderedLists(editor.value,editor.selectionStart);
   if(rn){editor.value=rn.val;editor.selectionStart=editor.selectionEnd=rn.cursorPos;}
+  allowLaunchOverrideOnce=false;
   showContent(); setDirty(true); renderPreview(); updateStats(); scheduleSaveDraft();
 });
 editor.addEventListener('beforeinput',e=>{
@@ -1683,8 +1676,7 @@ document.addEventListener('drop',async e=>{
 async function initializeApp(){
   updateStats();
   registerLaunchFileHandler();
-  await initialLaunchHandled;
-  if(!hasLoadedLaunchFile) restoreDraft();
+  restoreDraft();
   setView('editor');
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
