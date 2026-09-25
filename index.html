@@ -1065,11 +1065,22 @@ async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
 function registerLaunchFileHandler(){
   if(!('launchQueue' in window)||typeof window.launchQueue.setConsumer!=='function') return;
   window.launchQueue.setConsumer(async launchParams=>{
-    const handle=launchParams&&Array.isArray(launchParams.files)?launchParams.files[0]:null;
+    const files=launchParams&&launchParams.files;
+    let handle=null;
+    if(files){
+      if(typeof files[0]!=='undefined') handle=files[0];
+      else if(typeof files.item==='function') handle=files.item(0);
+      else {
+        for(const candidate of files){handle=candidate; break;}
+      }
+    }
     if(!handle) return;
     try{
       const file=await handle.getFile();
-      if(!/\.(md|markdown|txt)$/i.test(file.name)) return;
+      if(!/\.(md|markdown|txt)$/i.test(file.name)){
+        showToast('Unsupported file type','error');
+        return;
+      }
       const openLaunchFile=async()=>{
         await loadFileIntoEditor(file,{handle,toastMessage:'Opened'});
       };
