@@ -1360,6 +1360,7 @@ function closeSheet(){overlay.classList.remove('open'); sheet.classList.remove('
 let _confirmCb=null;
 let _confirmCancelCb=null;
 function confirmDiscard(cb){
+  _confirmCancelCb=null;
   if(isDirty&&editor.value.trim()){
     _confirmCb=cb;
     confirmOverlay.classList.add('open'); confirmDialog.classList.add('open');
