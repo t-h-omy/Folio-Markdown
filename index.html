@@ -849,8 +849,9 @@ function parseMarkdown(src) {
   const sanitizeUrl = (url,kind='link') => {
     const trimmed = url.trim();
     if(!trimmed) return null;
+    if(/\s/.test(trimmed)) return null;
     if(trimmed.startsWith('//')) return null;
-    if(trimmed.startsWith('#')||trimmed.startsWith('/')||trimmed.startsWith('./')||trimmed.startsWith('../')||trimmed.startsWith('?')) return escapeAttr(trimmed);
+    if(trimmed.startsWith('#')) return escapeAttr(trimmed);
     const schemeMatch=trimmed.match(/^([a-zA-Z][a-zA-Z\d+.-]*):/);
     if(!schemeMatch) return null;
     const allowed=kind==='image'?['http','https']:['http','https','mailto'];
@@ -879,9 +880,9 @@ function parseMarkdown(src) {
       const text=input.slice(textStart,textEnd);
       const destination=input.slice(textEnd+2,j-1);
       const destTrimmed=destination.trim();
-      const titleMatch=destTrimmed.match(/^(.*?)(?:\s+["']([^"']*)["'])$/);
+      const titleMatch=destTrimmed.match(/^(.*?)(?:\s+(["'])(.*?)\2)$/);
       const url=(titleMatch?titleMatch[1]:destTrimmed).trim();
-      const title=titleMatch?titleMatch[2]:'';
+      const title=titleMatch?titleMatch[3]:'';
       const titleAttr=title?' title="'+escapeAttr(title)+'"':'';
       const safeUrl=sanitizeUrl(url,isImage?'image':'link');
       const literal=isImage?'!['+text+']('+destination+')':'['+text+']('+destination+')';
