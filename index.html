@@ -856,19 +856,45 @@ function parseMarkdown(src) {
     const allowed=kind==='image'?['http','https']:['http','https','mailto'];
     return allowed.includes(schemeMatch[1].toLowerCase()) ? escapeAttr(trimmed) : null;
   };
+  const replaceMarkdownLinks = (input,isImage,stash) => {
+    let out='',i=0;
+    while(i<input.length){
+      const marker=isImage?'![':'[';
+      if(input.slice(i,i+marker.length)!==marker){out+=input[i];i++;continue;}
+      const textStart=i+marker.length;
+      let textEnd=textStart;
+      while(textEnd<input.length&&input[textEnd]!==']')textEnd++;
+      if(textEnd>=input.length||input[textEnd+1]!=='('){out+=input[i];i++;continue;}
+      let j=textEnd+2,depth=1;
+      while(j<input.length&&depth>0){
+        if(input[j]==='(')depth++;
+        else if(input[j]===')')depth--;
+        j++;
+      }
+      if(depth!==0){out+=input[i];i++;continue;}
+      const text=input.slice(textStart,textEnd);
+      const url=input.slice(textEnd+2,j-1);
+      const safeUrl=sanitizeUrl(url,isImage?'image':'link');
+      const literal=isImage?'!['+text+']('+url+')':'['+text+']('+url+')';
+      out+=safeUrl
+        ? stash(isImage?'<img src="'+safeUrl+'" alt="'+escapeAttr(text)+'">':'<a href="'+safeUrl+'" target="_blank" rel="noopener">'+escape(text)+'</a>')
+        : stash(escape(literal));
+      i=j;
+    }
+    return out;
+  };
   const inline = s => {
     const tokens = [];
     const stash = html => '\u0000' + (tokens.push(html) - 1) + '\u0000';
-    const prepared = s
-      .replace(/`([^`]+)`/g, (_,c) => stash('<code>'+escape(c)+'</code>'))
-      .replace(/!\[([^\]]*)\]\(([^()\s]+)\)/g, (_,alt,url) => {
-        const safeUrl = sanitizeUrl(url,'image');
-        return safeUrl ? stash('<img src="'+safeUrl+'" alt="'+escapeAttr(alt)+'">') : stash(escape('!['+alt+']('+url+')'));
-      })
-      .replace(/\[([^\]]+)\]\(([^()\s]+)\)/g, (_,text,url) => {
-        const safeUrl = sanitizeUrl(url,'link');
-        return safeUrl ? stash('<a href="'+safeUrl+'" target="_blank" rel="noopener">'+escape(text)+'</a>') : stash(escape('['+text+']('+url+')'));
-      });
+    const prepared = replaceMarkdownLinks(
+      replaceMarkdownLinks(
+        s.replace(/`([^`]+)`/g, (_,c) => stash('<code>'+escape(c)+'</code>')),
+        true,
+        stash
+      ),
+      false,
+      stash
+    );
     return escape(prepared)
       .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
       .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
