@@ -1101,6 +1101,7 @@ function registerLaunchFileHandler(){
       }
       const openLaunchFile=async()=>{
         await loadFileIntoEditor(file,{handle,toastMessage:'Opened'});
+        launchLoadStarted=false;
       };
       if(allowLaunchOverrideOnce){
         allowLaunchOverrideOnce=false;
@@ -1109,7 +1110,7 @@ function registerLaunchFileHandler(){
         confirmDiscard(()=>openLaunchFile().catch(e=>{
           console.error('Launch open failed:',e);
           showToast('Could not open','error');
-        }));
+        }),()=>{launchLoadStarted=false;});
       } else {
         await openLaunchFile();
       }
@@ -1350,22 +1351,26 @@ function openSheet(){overlay.classList.add('open'); sheet.classList.add('open');
 function closeSheet(){overlay.classList.remove('open'); sheet.classList.remove('open');}
 
 let _confirmCb=null;
-function confirmDiscard(cb){
+let _confirmCancelCb=null;
+function confirmDiscard(cb,onCancel=null){
   if(isDirty&&editor.value.trim()){
-    _confirmCb=cb;
+    _confirmCb=cb; _confirmCancelCb=onCancel;
     confirmOverlay.classList.add('open'); confirmDialog.classList.add('open');
   } else { cb(); }
 }
 document.getElementById('cd-discard').addEventListener('click',()=>{
   confirmOverlay.classList.remove('open'); confirmDialog.classList.remove('open');
   if(_confirmCb){_confirmCb(); _confirmCb=null;}
+  _confirmCancelCb=null;
 });
 document.getElementById('cd-cancel').addEventListener('click',()=>{
   confirmOverlay.classList.remove('open'); confirmDialog.classList.remove('open');
+  if(_confirmCancelCb){_confirmCancelCb(); _confirmCancelCb=null;}
   _confirmCb=null;
 });
 confirmOverlay.addEventListener('click',()=>{
   confirmOverlay.classList.remove('open'); confirmDialog.classList.remove('open');
+  if(_confirmCancelCb){_confirmCancelCb(); _confirmCancelCb=null;}
   _confirmCb=null;
 });
 
