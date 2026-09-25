@@ -845,16 +845,32 @@ const APP_VERSION = 'v1.4.0';
 
 function parseMarkdown(src) {
   const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const inline = s => s
-    .replace(/`([^`]+)`/g, (_,c) => '<code>'+escape(c)+'</code>')
-    .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/__(.+?)__/g,'<strong>$1</strong>')
-    .replace(/\*([^*\n]+)\*/g,'<em>$1</em>')
-    .replace(/_([^_\n]+)_/g,'<em>$1</em>')
-    .replace(/~~(.+?)~~/g,'<del>$1</del>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g,'<img src="$2" alt="$1">')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const escapeAttr = s => escape(s).replace(/"/g,'&quot;');
+  const sanitizeUrl = url => {
+    const trimmed = url.trim();
+    return /^(javascript|data|vbscript):/i.test(trimmed) ? null : escapeAttr(trimmed);
+  };
+  const inline = s => {
+    const tokens = [];
+    const stash = html => '\u0000' + (tokens.push(html) - 1) + '\u0000';
+    return escape(s)
+      .replace(/`([^`]+)`/g, (_,c) => stash('<code>'+c+'</code>'))
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_,alt,url) => {
+        const safeUrl = sanitizeUrl(url);
+        return safeUrl ? stash('<img src="'+safeUrl+'" alt="'+alt.replace(/"/g,'&quot;')+'">') : '!['+alt+']('+url+')';
+      })
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_,text,url) => {
+        const safeUrl = sanitizeUrl(url);
+        return safeUrl ? stash('<a href="'+safeUrl+'" target="_blank" rel="noopener">'+text+'</a>') : text;
+      })
+      .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/__(.+?)__/g,'<strong>$1</strong>')
+      .replace(/\*([^*\n]+)\*/g,'<em>$1</em>')
+      .replace(/_([^_\n]+)_/g,'<em>$1</em>')
+      .replace(/~~(.+?)~~/g,'<del>$1</del>')
+      .replace(/\u0000(\d+)\u0000/g, (_,idx) => tokens[Number(idx)]);
+  };
   const minInd=arr=>{let m=Infinity;arr.forEach(l=>{const t=typeof l==='string'?l:l.text;const r=t.match(/^( *)/);if(r)m=Math.min(m,r[1].length);});return m===Infinity?0:m;};
   const parseBlock=(arr,base)=>{
     let out='',j=0,ctag=null;
