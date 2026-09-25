@@ -991,6 +991,7 @@ function parseMarkdown(src) {
 let fileHandle=null, isDirty=false, currentView='editor';
 let allowLaunchOverrideOnce=false;
 let launchLoadStarted=false;
+let launchFlowActive=false;
 
 // --- Draft persistence (survive device memory clearing) ---
 const DRAFT_KEY='folio_draft';
@@ -1073,6 +1074,11 @@ function registerLaunchFileHandler(){
       for(const candidate of files){handle=candidate; break;}
     }
     if(!handle) return;
+    if(launchFlowActive){
+      showToast('Already opening a file','error');
+      return;
+    }
+    launchFlowActive=true;
     launchLoadStarted=true;
     const preLaunchState={
       content:editor.value,
@@ -1084,6 +1090,7 @@ function registerLaunchFileHandler(){
     const isCleanStartupState=!preLaunchState.showingContent&&!preLaunchState.dirty&&!preLaunchState.handle&&!preLaunchState.content;
     const hasPreLaunchState=preLaunchState.showingContent||preLaunchState.content!==''||preLaunchState.filename!=='untitled'||preLaunchState.handle!==null||preLaunchState.dirty;
     const restorePreLaunchState=()=>{
+      launchFlowActive=false;
       launchLoadStarted=false;
       if(hasPreLaunchState){
         editor.value=preLaunchState.content;
@@ -1107,13 +1114,14 @@ function registerLaunchFileHandler(){
       }
       const openLaunchFile=async()=>{
         await loadFileIntoEditor(file,{handle,toastMessage:'Opened'});
+        launchFlowActive=false;
         launchLoadStarted=false;
       };
       if(allowLaunchOverrideOnce||isCleanStartupState){
         allowLaunchOverrideOnce=false;
         await openLaunchFile();
       } else if(isDirty&&editor.value.trim()){
-        _confirmCancelCb=()=>{launchLoadStarted=false;};
+        _confirmCancelCb=()=>{launchFlowActive=false; launchLoadStarted=false;};
         confirmDiscard(()=>openLaunchFile().catch(e=>{
           restorePreLaunchState();
           console.error('Launch open failed:',e);
