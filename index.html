@@ -993,11 +993,28 @@ async function readTextFile(file){
   }
 }
 async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
-  editor.value=await readTextFile(file);
-  setFilename(file.name.replace(/\.[^.]+$/,''));
-  fileHandle=handle;
-  setDirty(false); renderPreview(); updateStats(); showContent();
-  saveDraft(); showToast(toastMessage,'success');
+  const content=await readTextFile(file);
+  const nextName=file.name.replace(/\.[^.]+$/,'');
+  const prevState={
+    content:editor.value,
+    filename:fnameText.textContent||'untitled',
+    handle:fileHandle,
+    dirty:isDirty
+  };
+  try{
+    editor.value=content;
+    setFilename(nextName);
+    fileHandle=handle;
+    setDirty(false); renderPreview(); updateStats(); showContent();
+    saveDraft(); showToast(toastMessage,'success');
+  }catch(e){
+    editor.value=prevState.content;
+    setFilename(prevState.filename);
+    fileHandle=prevState.handle;
+    setDirty(prevState.dirty); renderPreview(); updateStats();
+    if(prevState.content) showContent();
+    throw e;
+  }
 }
 // ---
 
@@ -1167,6 +1184,7 @@ async function _doOpenFile(){
     try{
       const[h]=await window.showOpenFilePicker({types:[{description:'Markdown',accept:{'text/markdown':['.md','.markdown'],'text/plain':['.txt']}}]});
       const f=await h.getFile();
+      fileHandle=null;
       await loadFileIntoEditor(f,{handle:h,toastMessage:'Opened'});
     }catch(e){if(e.name!=='AbortError')showToast('Could not open','error');}
   } else { fileInput.click(); }
