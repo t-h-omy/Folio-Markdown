@@ -999,13 +999,14 @@ async function readTextFile(file){
 }
 async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
   const content=await readTextFile(file);
-  const nextName=file.name.replace(/\.[^.]+$/,'');
   const prevState={
     content:editor.value,
     filename:fnameText.textContent||'untitled',
     handle:fileHandle,
     dirty:isDirty
   };
+  const rawName=file&&typeof file.name==='string'&&file.name ? file.name : prevState.filename;
+  const nextName=rawName.replace(/\.[^.]+$/,'')||'untitled';
   try{
     editor.value=content;
     setFilename(nextName);
@@ -1191,7 +1192,7 @@ async function _doOpenFile(){
       const f=await h.getFile();
       fileHandle=null;
       await loadFileIntoEditor(f,{handle:h,toastMessage:'Opened'});
-    }catch(e){if(e.name!=='AbortError')showToast('Could not open','error');}
+    }catch(e){if(e.name!=='AbortError'){console.error('Open failed:',e);showToast('Could not open','error');}}
   } else { fileInput.click(); }
 }
 
