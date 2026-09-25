@@ -989,6 +989,7 @@ function parseMarkdown(src) {
 }
 
 let fileHandle=null, isDirty=false, currentView='editor';
+let hasLoadedLaunchFile=false;
 
 // --- Draft persistence (survive device memory clearing) ---
 const DRAFT_KEY='folio_draft';
@@ -1058,6 +1059,44 @@ async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
     if(prevState.content) showContent();
     throw e;
   }
+}
+
+let _resolveInitialLaunch=null;
+const initialLaunchHandled=new Promise(resolve=>{_resolveInitialLaunch=resolve;});
+function settleInitialLaunch(){
+  if(_resolveInitialLaunch){_resolveInitialLaunch(); _resolveInitialLaunch=null;}
+}
+function registerLaunchFileHandler(){
+  if(!('launchQueue' in window)||typeof window.launchQueue.setConsumer!=='function'){
+    settleInitialLaunch();
+    return;
+  }
+  window.launchQueue.setConsumer(async launchParams=>{
+    const handle=launchParams&&Array.isArray(launchParams.files)?launchParams.files[0]:null;
+    if(!handle){settleInitialLaunch(); return;}
+    try{
+      const file=await handle.getFile();
+      if(!/\.(md|markdown|txt)$/i.test(file.name)){settleInitialLaunch(); return;}
+      const openLaunchFile=async()=>{
+        hasLoadedLaunchFile=true;
+        await loadFileIntoEditor(file,{handle,toastMessage:'Opened'});
+      };
+      if(isDirty&&editor.value.trim()){
+        confirmDiscard(()=>openLaunchFile().catch(e=>{
+          console.error('Launch open failed:',e);
+          showToast('Could not open','error');
+        }));
+      } else {
+        await openLaunchFile();
+      }
+    }catch(e){
+      console.error('Launch open failed:',e);
+      showToast('Could not open','error');
+    }finally{
+      settleInitialLaunch();
+    }
+  });
+  setTimeout(settleInitialLaunch,300);
 }
 // ---
 
@@ -1641,10 +1680,16 @@ document.addEventListener('drop',async e=>{
   });
 });
 
-updateStats();
-restoreDraft();
-setView('editor');
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+async function initializeApp(){
+  updateStats();
+  registerLaunchFileHandler();
+  await initialLaunchHandled;
+  if(!hasLoadedLaunchFile) restoreDraft();
+  setView('editor');
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+initializeApp();
 </script>
 </body>
 </html>
