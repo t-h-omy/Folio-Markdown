@@ -1074,11 +1074,28 @@ function registerLaunchFileHandler(){
     }
     if(!handle) return;
     launchLoadStarted=true;
+    const preLaunchState={
+      content:editor.value,
+      filename:fnameText.textContent||'untitled',
+      handle:fileHandle,
+      dirty:isDirty
+    };
+    const restorePreLaunchState=()=>{
+      launchLoadStarted=false;
+      if(preLaunchState.content){
+        editor.value=preLaunchState.content;
+        setFilename(preLaunchState.filename);
+        fileHandle=preLaunchState.handle;
+        setDirty(preLaunchState.dirty);
+        renderPreview(); updateStats(); showContent();
+      } else {
+        restoreDraft();
+      }
+    };
     try{
       const file=await handle.getFile();
       if(!/\.(md|markdown|txt)$/i.test(file.name)){
-        launchLoadStarted=false;
-        if(!editor.value) restoreDraft();
+        restorePreLaunchState();
         showToast('Unsupported file type','error');
         return;
       }
@@ -1097,8 +1114,7 @@ function registerLaunchFileHandler(){
         await openLaunchFile();
       }
     }catch(e){
-      launchLoadStarted=false;
-      if(!editor.value) restoreDraft();
+      restorePreLaunchState();
       console.error('Launch open failed:',e);
       showToast('Could not open','error');
     }
