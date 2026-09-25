@@ -1102,6 +1102,13 @@ function registerLaunchFileHandler(){
         if(preLaunchState.showingContent) showContent();
         else emptyState.classList.remove('hidden');
       } else {
+        editor.value='';
+        setFilename('untitled');
+        fileHandle=null;
+        allowLaunchOverrideOnce=false;
+        setDirty(false);
+        renderPreview(); updateStats();
+        emptyState.classList.remove('hidden');
         restoreDraft();
       }
     };
