@@ -994,7 +994,7 @@ async function readTextFile(file){
 }
 async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
   editor.value=await readTextFile(file);
-  setFilename(/\.(md|markdown)$/i.test(file.name)?file.name.replace(/\.[^.]+$/,''):file.name);
+  setFilename(file.name.replace(/\.[^.]+$/,''));
   fileHandle=handle;
   setDirty(false); renderPreview(); updateStats(); showContent();
   saveDraft(); showToast(toastMessage,'success');
