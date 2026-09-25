@@ -844,7 +844,7 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
 const APP_VERSION = 'v1.4.0';
 
 function parseMarkdown(src) {
-  const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const escapeAttr = s => escape(s).replace(/"/g,'&quot;');
   const sanitizeUrl = url => {
     const trimmed = url.trim();
@@ -857,11 +857,11 @@ function parseMarkdown(src) {
       .replace(/`([^`]+)`/g, (_,c) => stash('<code>'+c+'</code>'))
       .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_,alt,url) => {
         const safeUrl = sanitizeUrl(url);
-        return safeUrl ? stash('<img src="'+safeUrl+'" alt="'+alt.replace(/"/g,'&quot;')+'">') : '!['+alt+']('+url+')';
+        return safeUrl ? stash('<img src="'+safeUrl+'" alt="'+alt+'">') : '!['+alt+']('+url+')';
       })
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_,text,url) => {
         const safeUrl = sanitizeUrl(url);
-        return safeUrl ? stash('<a href="'+safeUrl+'" target="_blank" rel="noopener">'+text+'</a>') : text;
+        return safeUrl ? stash('<a href="'+safeUrl+'" target="_blank" rel="noopener">'+text+'</a>') : '['+text+']('+url+')';
       })
       .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
       .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
@@ -972,6 +972,21 @@ function restoreDraft(){
     renderPreview(); updateStats(); showContent();
     showToast('Draft restored','success');
   }catch(e){console.warn('Draft restore failed:',e);}
+}
+async function readTextFile(file){
+  if(file&&typeof file.arrayBuffer==='function'){
+    const buffer=await file.arrayBuffer();
+    try{return new TextDecoder('utf-8').decode(buffer);}
+    catch(e){console.warn('ArrayBuffer decode failed, falling back to file.text():',e);}
+  }
+  return file.text();
+}
+async function loadDocumentFile(file,{handle=null,toastMessage='Opened'}={}){
+  editor.value=await readTextFile(file);
+  setFilename(file.name.replace(/\.[^.]+$/,''));
+  fileHandle=handle;
+  setDirty(false); renderPreview(); updateStats(); showContent();
+  saveDraft(); showToast(toastMessage,'success');
 }
 // ---
 
@@ -1140,22 +1155,16 @@ async function _doOpenFile(){
   if(window.showOpenFilePicker){
     try{
       const[h]=await window.showOpenFilePicker({types:[{description:'Markdown',accept:{'text/markdown':['.md','.markdown'],'text/plain':['.txt']}}]});
-      fileHandle=h; const f=await h.getFile();
-      editor.value=await f.text();
-      setFilename(f.name.replace(/\.[^.]+$/,''));
-      setDirty(false); renderPreview(); updateStats(); showContent();
-      saveDraft();
-      showToast('Opened','success');
+      const f=await h.getFile();
+      await loadDocumentFile(f,{handle:h,toastMessage:'Opened'});
     }catch(e){if(e.name!=='AbortError')showToast('Could not open','error');}
   } else { fileInput.click(); }
 }
 
 fileInput.addEventListener('change',async()=>{
   const f=fileInput.files[0]; if(!f) return;
-  editor.value=await f.text();
-  setFilename(f.name.replace(/\.[^.]+$/,''));
-  fileHandle=null; setDirty(false); renderPreview(); updateStats(); showContent();
-  showToast('Opened','success'); saveDraft(); fileInput.value='';
+  await loadDocumentFile(f,{toastMessage:'Opened'});
+  fileInput.value='';
 });
 
 async function saveFile(){
@@ -1541,10 +1550,7 @@ document.addEventListener('drop',async e=>{
   const f=e.dataTransfer.files[0];
   if(!f||!/\.(md|markdown|txt)$/i.test(f.name)){showToast('Drop a .md file','error');return;}
   confirmDiscard(async()=>{
-    editor.value=await f.text();
-    setFilename(f.name.replace(/\.[^.]+$/,''));
-    fileHandle=null; setDirty(false); renderPreview(); updateStats(); showContent();
-    saveDraft(); showToast('File loaded','success');
+    await loadDocumentFile(f,{toastMessage:'File loaded'});
   });
 });
 
