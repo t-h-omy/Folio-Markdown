@@ -863,7 +863,11 @@ function parseMarkdown(src) {
       if(input.slice(i,i+marker.length)!==marker){out+=input[i];i++;continue;}
       const textStart=i+marker.length;
       let textEnd=textStart;
-      while(textEnd<input.length&&input[textEnd]!==']')textEnd++;
+      while(textEnd<input.length){
+        if(input[textEnd]==='\\'){textEnd+=2;continue;}
+        if(input[textEnd]===']')break;
+        textEnd++;
+      }
       if(textEnd>=input.length||input[textEnd+1]!=='('){out+=input[i];i++;continue;}
       let j=textEnd+2,depth=1;
       while(j<input.length&&depth>0){
@@ -873,11 +877,16 @@ function parseMarkdown(src) {
       }
       if(depth!==0){out+=input[i];i++;continue;}
       const text=input.slice(textStart,textEnd);
-      const url=input.slice(textEnd+2,j-1);
+      const destination=input.slice(textEnd+2,j-1);
+      const destTrimmed=destination.trim();
+      const titleMatch=destTrimmed.match(/^(.*?)(?:\s+["']([^"']*)["'])$/);
+      const url=(titleMatch?titleMatch[1]:destTrimmed).trim();
+      const title=titleMatch?titleMatch[2]:'';
+      const titleAttr=title?' title="'+escapeAttr(title)+'"':'';
       const safeUrl=sanitizeUrl(url,isImage?'image':'link');
-      const literal=isImage?'!['+text+']('+url+')':'['+text+']('+url+')';
+      const literal=isImage?'!['+text+']('+destination+')':'['+text+']('+destination+')';
       out+=safeUrl
-        ? stash(isImage?'<img src="'+safeUrl+'" alt="'+escapeAttr(text)+'">':'<a href="'+safeUrl+'" target="_blank" rel="noopener noreferrer">'+escape(text)+'</a>')
+        ? stash(isImage?'<img src="'+safeUrl+'" alt="'+escapeAttr(text)+'"'+titleAttr+'>':'<a href="'+safeUrl+'" target="_blank" rel="noopener noreferrer"'+titleAttr+'>'+escape(text)+'</a>')
         : stash(escape(literal));
       i=j;
     }
