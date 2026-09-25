@@ -1077,6 +1077,8 @@ function registerLaunchFileHandler(){
     try{
       const file=await handle.getFile();
       if(!/\.(md|markdown|txt)$/i.test(file.name)){
+        launchLoadStarted=false;
+        if(!editor.value) restoreDraft();
         showToast('Unsupported file type','error');
         return;
       }
@@ -1095,6 +1097,8 @@ function registerLaunchFileHandler(){
         await openLaunchFile();
       }
     }catch(e){
+      launchLoadStarted=false;
+      if(!editor.value) restoreDraft();
       console.error('Launch open failed:',e);
       showToast('Could not open','error');
     }
