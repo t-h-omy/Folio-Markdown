@@ -1067,12 +1067,8 @@ function registerLaunchFileHandler(){
   window.launchQueue.setConsumer(async launchParams=>{
     const files=launchParams&&launchParams.files;
     let handle=null;
-    if(files){
-      if(typeof files[0]!=='undefined') handle=files[0];
-      else if(typeof files.item==='function') handle=files.item(0);
-      else {
-        for(const candidate of files){handle=candidate; break;}
-      }
+    if(files&&typeof files[Symbol.iterator]==='function'){
+      for(const candidate of files){handle=candidate; break;}
     }
     if(!handle) return;
     try{
