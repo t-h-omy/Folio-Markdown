@@ -1682,8 +1682,8 @@ document.addEventListener('drop',async e=>{
 
 function initializeApp(){
   updateStats();
-  registerLaunchFileHandler();
   restoreDraft();
+  registerLaunchFileHandler();
   document.body.className='view-'+currentView;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===currentView));
   document.querySelectorAll('.dvt-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===currentView));
