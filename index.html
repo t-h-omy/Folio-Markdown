@@ -990,6 +990,7 @@ function parseMarkdown(src) {
 
 let fileHandle=null, isDirty=false, currentView='editor';
 let allowLaunchOverrideOnce=false;
+let launchLoadStarted=false;
 
 // --- Draft persistence (survive device memory clearing) ---
 const DRAFT_KEY='folio_draft';
@@ -1007,6 +1008,7 @@ function clearDraft(){try{localStorage.removeItem(DRAFT_KEY);}catch(e){console.w
 function scheduleSaveDraft(){clearTimeout(_draftTimer);_draftTimer=setTimeout(saveDraft,500);}
 function restoreDraft(){
   try{
+    if(launchLoadStarted) return;
     const raw=localStorage.getItem(DRAFT_KEY);
     if(!raw)return;
     const d=JSON.parse(raw);
@@ -1071,6 +1073,7 @@ function registerLaunchFileHandler(){
       for(const candidate of files){handle=candidate; break;}
     }
     if(!handle) return;
+    launchLoadStarted=true;
     try{
       const file=await handle.getFile();
       if(!/\.(md|markdown|txt)$/i.test(file.name)){
@@ -1682,8 +1685,8 @@ document.addEventListener('drop',async e=>{
 
 function initializeApp(){
   updateStats();
-  restoreDraft();
   registerLaunchFileHandler();
+  restoreDraft();
   setView(currentView);
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
