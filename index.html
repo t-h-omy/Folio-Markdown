@@ -877,7 +877,7 @@ function parseMarkdown(src) {
       const safeUrl=sanitizeUrl(url,isImage?'image':'link');
       const literal=isImage?'!['+text+']('+url+')':'['+text+']('+url+')';
       out+=safeUrl
-        ? stash(isImage?'<img src="'+safeUrl+'" alt="'+escapeAttr(text)+'">':'<a href="'+safeUrl+'" target="_blank" rel="noopener">'+escape(text)+'</a>')
+        ? stash(isImage?'<img src="'+safeUrl+'" alt="'+escapeAttr(text)+'">':'<a href="'+safeUrl+'" target="_blank" rel="noopener noreferrer">'+escape(text)+'</a>')
         : stash(escape(literal));
       i=j;
     }
@@ -1024,14 +1024,15 @@ async function readTextFile(file){
 }
 async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
   const content=await readTextFile(file);
+  const normalizeDisplayName=name=>(name||'untitled').replace(/\.[^.]+$/,'')||'untitled';
   const prevState={
     content:editor.value,
-    filename:fnameText.textContent||'untitled',
+    filename:normalizeDisplayName(fnameText.textContent||'untitled'),
     handle:fileHandle,
     dirty:isDirty
   };
   const rawName=file&&typeof file.name==='string'&&file.name ? file.name : prevState.filename;
-  const nextName=rawName.replace(/\.[^.]+$/,'')||'untitled';
+  const nextName=normalizeDisplayName(rawName);
   try{
     editor.value=content;
     setFilename(nextName);
