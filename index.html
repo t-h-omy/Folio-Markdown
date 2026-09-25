@@ -844,8 +844,8 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
 const APP_VERSION = 'v1.4.0';
 
 function parseMarkdown(src) {
-  const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const escapeAttr = s => escape(s).replace(/"/g,'&quot;');
+  const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const escapeAttr = s => escape(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const sanitizeUrl = (url,kind='link') => {
     const trimmed = url.trim();
     if(!trimmed) return null;
@@ -1009,7 +1009,6 @@ function restoreDraft(){
 async function readTextFile(file){
   let buffer;
   if(file&&typeof file.arrayBuffer==='function') buffer=await file.arrayBuffer();
-  else if(typeof Response==='function') buffer=await new Response(file).arrayBuffer();
   else if(typeof FileReader!=='undefined') buffer=await new Promise((resolve,reject)=>{
     const reader=new FileReader();
     reader.onload=()=>resolve(reader.result);
