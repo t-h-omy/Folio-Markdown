@@ -1011,7 +1011,7 @@ function restoreDraft(){
     if(!raw)return;
     const d=JSON.parse(raw);
     if(!d||typeof d.content!=='string'||!d.content)return;
-    allowLaunchOverrideOnce=true;
+    allowLaunchOverrideOnce=!d.dirty;
     editor.value=d.content;
     setFilename(d.filename||'untitled');
     setDirty(!!d.dirty);
@@ -1680,7 +1680,7 @@ document.addEventListener('drop',async e=>{
   });
 });
 
-async function initializeApp(){
+function initializeApp(){
   updateStats();
   registerLaunchFileHandler();
   restoreDraft();
