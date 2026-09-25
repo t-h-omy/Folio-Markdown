@@ -1112,11 +1112,12 @@ function registerLaunchFileHandler(){
         allowLaunchOverrideOnce=false;
         await openLaunchFile();
       } else if(isDirty&&editor.value.trim()){
+        _confirmCancelCb=()=>{launchLoadStarted=false;};
         confirmDiscard(()=>openLaunchFile().catch(e=>{
           restorePreLaunchState();
           console.error('Launch open failed:',e);
           showToast('Could not open','error');
-        }),()=>{launchLoadStarted=false;});
+        }));
       } else {
         await openLaunchFile();
       }
@@ -1358,9 +1359,9 @@ function closeSheet(){overlay.classList.remove('open'); sheet.classList.remove('
 
 let _confirmCb=null;
 let _confirmCancelCb=null;
-function confirmDiscard(cb,onCancel=null){
+function confirmDiscard(cb){
   if(isDirty&&editor.value.trim()){
-    _confirmCb=cb; _confirmCancelCb=onCancel;
+    _confirmCb=cb;
     confirmOverlay.classList.add('open'); confirmDialog.classList.add('open');
   } else { cb(); }
 }
