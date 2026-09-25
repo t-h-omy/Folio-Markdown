@@ -1684,9 +1684,7 @@ function initializeApp(){
   updateStats();
   restoreDraft();
   registerLaunchFileHandler();
-  document.body.className='view-'+currentView;
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===currentView));
-  document.querySelectorAll('.dvt-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===currentView));
+  setView(currentView);
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
 
