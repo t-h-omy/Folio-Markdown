@@ -984,7 +984,7 @@ async function readTextFile(file){
   let buffer;
   if(file&&typeof file.arrayBuffer==='function') buffer=await file.arrayBuffer();
   else if(typeof Response==='function') buffer=await new Response(file).arrayBuffer();
-  else if(file&&typeof file.text==='function') buffer=new TextEncoder().encode(await file.text()).buffer;
+  else if(file&&typeof file.text==='function') return file.text();
   else throw new Error('Could not read file');
   try{return new TextDecoder('utf-8',{fatal:true}).decode(buffer);}
   catch(e){
@@ -1174,7 +1174,7 @@ async function _doOpenFile(){
 
 fileInput.addEventListener('change',async()=>{
   const f=fileInput.files[0]; if(!f) return;
-  await loadFileIntoEditor(f,{toastMessage:'Opened'});
+  await loadFileIntoEditor(f,{handle:null,toastMessage:'Opened'});
   fileInput.value='';
 });
 
