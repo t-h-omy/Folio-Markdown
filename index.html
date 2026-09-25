@@ -1192,8 +1192,13 @@ async function _doOpenFile(){
 
 fileInput.addEventListener('change',async()=>{
   const f=fileInput.files[0]; if(!f) return;
-  await loadFileIntoEditor(f,{handle:null,toastMessage:'Opened'});
-  fileInput.value='';
+  try{
+    await loadFileIntoEditor(f,{handle:null,toastMessage:'Opened'});
+  }catch(e){
+    showToast('Could not open','error');
+  }finally{
+    fileInput.value='';
+  }
 });
 
 async function saveFile(){
@@ -1579,7 +1584,11 @@ document.addEventListener('drop',async e=>{
   const f=e.dataTransfer.files[0];
   if(!f||!/\.(md|markdown|txt)$/i.test(f.name)){showToast('Drop a .md file','error');return;}
   confirmDiscard(async()=>{
-    await loadFileIntoEditor(f,{toastMessage:'File loaded'});
+    try{
+      await loadFileIntoEditor(f,{toastMessage:'File loaded'});
+    }catch(e){
+      showToast('Could not open','error');
+    }
   });
 });
 
