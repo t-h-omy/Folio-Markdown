@@ -984,7 +984,12 @@ async function readTextFile(file){
   let buffer;
   if(file&&typeof file.arrayBuffer==='function') buffer=await file.arrayBuffer();
   else if(typeof Response==='function') buffer=await new Response(file).arrayBuffer();
-  else if(file&&typeof file.text==='function') return file.text();
+  else if(typeof FileReader!=='undefined') buffer=await new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=()=>reject(reader.error||new Error('Could not read file'));
+    reader.readAsArrayBuffer(file);
+  });
   else throw new Error('Could not read file');
   try{return new TextDecoder('utf-8',{fatal:true}).decode(buffer);}
   catch(e){
