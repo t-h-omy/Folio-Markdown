@@ -849,7 +849,6 @@ function parseMarkdown(src) {
   const sanitizeUrl = (url,kind='link') => {
     const trimmed = url.trim();
     if(!trimmed) return null;
-    if(/\s/.test(trimmed)) return null;
     if(trimmed.startsWith('//')) return null;
     if(trimmed.startsWith('#')) return escapeAttr(trimmed);
     const schemeMatch=trimmed.match(/^([a-zA-Z][a-zA-Z\d+.-]*):/);
@@ -872,6 +871,7 @@ function parseMarkdown(src) {
       if(textEnd>=input.length||input[textEnd+1]!=='('){out+=input[i];i++;continue;}
       let j=textEnd+2,depth=1;
       while(j<input.length&&depth>0){
+        if(input[j]==='\\'){j+=2;continue;}
         if(input[j]==='(')depth++;
         else if(input[j]===')')depth--;
         j++;
@@ -884,7 +884,7 @@ function parseMarkdown(src) {
       const url=(titleMatch?titleMatch[1]:destTrimmed).trim();
       const title=titleMatch?titleMatch[3]:'';
       const titleAttr=title?' title="'+escapeAttr(title)+'"':'';
-      const safeUrl=sanitizeUrl(url,isImage?'image':'link');
+      const safeUrl=/\s/.test(url) ? null : sanitizeUrl(url,isImage?'image':'link');
       const literal=isImage?'!['+text+']('+destination+')':'['+text+']('+destination+')';
       out+=safeUrl
         ? stash(isImage?'<img src="'+safeUrl+'" alt="'+escapeAttr(text)+'"'+titleAttr+'>':'<a href="'+safeUrl+'" target="_blank" rel="noopener noreferrer"'+titleAttr+'>'+escape(text)+'</a>')
@@ -1033,7 +1033,6 @@ async function readTextFile(file){
   }
 }
 async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
-  const content=await readTextFile(file);
   const normalizeDisplayName=name=>(name||'untitled').replace(/\.[^.]+$/,'')||'untitled';
   const prevState={
     content:editor.value,
@@ -1041,6 +1040,7 @@ async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
     handle:fileHandle,
     dirty:isDirty
   };
+  const content=await readTextFile(file);
   const rawName=file&&typeof file.name==='string'&&file.name ? file.name : prevState.filename;
   const nextName=normalizeDisplayName(rawName);
   try{
