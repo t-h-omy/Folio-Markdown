@@ -1078,17 +1078,21 @@ function registerLaunchFileHandler(){
       content:editor.value,
       filename:fnameText.textContent||'untitled',
       handle:fileHandle,
-      dirty:isDirty
+      dirty:isDirty,
+      showingContent:emptyState.classList.contains('hidden')
     };
+    const hasPreLaunchState=preLaunchState.showingContent||preLaunchState.content!==''||preLaunchState.filename!=='untitled'||preLaunchState.handle!==null||preLaunchState.dirty;
     const restorePreLaunchState=()=>{
       launchLoadStarted=false;
-      if(preLaunchState.content){
+      if(hasPreLaunchState){
         editor.value=preLaunchState.content;
         setFilename(preLaunchState.filename);
         fileHandle=preLaunchState.handle;
         allowLaunchOverrideOnce=!preLaunchState.dirty;
         setDirty(preLaunchState.dirty);
-        renderPreview(); updateStats(); showContent();
+        renderPreview(); updateStats();
+        if(preLaunchState.showingContent) showContent();
+        else emptyState.classList.remove('hidden');
       } else {
         restoreDraft();
       }
@@ -1109,6 +1113,7 @@ function registerLaunchFileHandler(){
         await openLaunchFile();
       } else if(isDirty&&editor.value.trim()){
         confirmDiscard(()=>openLaunchFile().catch(e=>{
+          restorePreLaunchState();
           console.error('Launch open failed:',e);
           showToast('Could not open','error');
         }),()=>{launchLoadStarted=false;});
