@@ -863,11 +863,11 @@ function parseMarkdown(src) {
       .replace(/`([^`]+)`/g, (_,c) => stash('<code>'+escape(c)+'</code>'))
       .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_,alt,url) => {
         const safeUrl = sanitizeUrl(url,'image');
-        return safeUrl ? stash('<img src="'+safeUrl+'" alt="'+escapeAttr(alt)+'">') : '!['+alt+']('+url+')';
+        return safeUrl ? stash('<img src="'+safeUrl+'" alt="'+escapeAttr(alt)+'">') : stash(escape('!['+alt+']('+url+')'));
       })
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_,text,url) => {
         const safeUrl = sanitizeUrl(url,'link');
-        return safeUrl ? stash('<a href="'+safeUrl+'" target="_blank" rel="noopener">'+escape(text)+'</a>') : '['+text+']('+url+')';
+        return safeUrl ? stash('<a href="'+safeUrl+'" target="_blank" rel="noopener">'+escape(text)+'</a>') : stash(escape('['+text+']('+url+')'));
       });
     return escape(prepared)
       .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
@@ -994,7 +994,7 @@ async function readTextFile(file){
 }
 async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
   editor.value=await readTextFile(file);
-  setFilename(file.name.replace(/\.[^.]+$/,''));
+  setFilename(/\.(md|markdown)$/i.test(file.name)?file.name.replace(/\.[^.]+$/,''):file.name);
   fileHandle=handle;
   setDirty(false); renderPreview(); updateStats(); showContent();
   saveDraft(); showToast(toastMessage,'success');
