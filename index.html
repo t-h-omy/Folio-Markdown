@@ -1081,6 +1081,7 @@ function registerLaunchFileHandler(){
       dirty:isDirty,
       showingContent:emptyState.classList.contains('hidden')
     };
+    const isCleanStartupState=!preLaunchState.showingContent&&!preLaunchState.dirty&&!preLaunchState.handle&&!preLaunchState.content;
     const hasPreLaunchState=preLaunchState.showingContent||preLaunchState.content!==''||preLaunchState.filename!=='untitled'||preLaunchState.handle!==null||preLaunchState.dirty;
     const restorePreLaunchState=()=>{
       launchLoadStarted=false;
@@ -1108,7 +1109,7 @@ function registerLaunchFileHandler(){
         await loadFileIntoEditor(file,{handle,toastMessage:'Opened'});
         launchLoadStarted=false;
       };
-      if(allowLaunchOverrideOnce){
+      if(allowLaunchOverrideOnce||isCleanStartupState){
         allowLaunchOverrideOnce=false;
         await openLaunchFile();
       } else if(isDirty&&editor.value.trim()){
@@ -1368,8 +1369,10 @@ function confirmDiscard(cb){
 }
 document.getElementById('cd-discard').addEventListener('click',()=>{
   confirmOverlay.classList.remove('open'); confirmDialog.classList.remove('open');
-  if(_confirmCb){_confirmCb(); _confirmCb=null;}
+  const cb=_confirmCb;
+  _confirmCb=null;
   _confirmCancelCb=null;
+  if(cb) cb();
 });
 document.getElementById('cd-cancel').addEventListener('click',()=>{
   confirmOverlay.classList.remove('open'); confirmDialog.classList.remove('open');
