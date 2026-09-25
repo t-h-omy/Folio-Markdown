@@ -853,16 +853,17 @@ function parseMarkdown(src) {
   const inline = s => {
     const tokens = [];
     const stash = html => '\u0000' + (tokens.push(html) - 1) + '\u0000';
-    return escape(s)
-      .replace(/`([^`]+)`/g, (_,c) => stash('<code>'+c+'</code>'))
+    const prepared = s
+      .replace(/`([^`]+)`/g, (_,c) => stash('<code>'+escape(c)+'</code>'))
       .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_,alt,url) => {
         const safeUrl = sanitizeUrl(url);
-        return safeUrl ? stash('<img src="'+safeUrl+'" alt="'+alt+'">') : '!['+alt+']('+url+')';
+        return safeUrl ? stash('<img src="'+safeUrl+'" alt="'+escapeAttr(alt)+'">') : '!['+alt+']('+url+')';
       })
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_,text,url) => {
         const safeUrl = sanitizeUrl(url);
-        return safeUrl ? stash('<a href="'+safeUrl+'" target="_blank" rel="noopener">'+text+'</a>') : '['+text+']('+url+')';
-      })
+        return safeUrl ? stash('<a href="'+safeUrl+'" target="_blank" rel="noopener">'+escape(text)+'</a>') : '['+text+']('+url+')';
+      });
+    return escape(prepared)
       .replace(/\*\*\*(.+?)\*\*\*/g,'<strong><em>$1</em></strong>')
       .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
       .replace(/__(.+?)__/g,'<strong>$1</strong>')
