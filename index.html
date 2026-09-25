@@ -849,6 +849,7 @@ function parseMarkdown(src) {
   const sanitizeUrl = (url,kind='link') => {
     const trimmed = url.trim();
     if(!trimmed) return null;
+    if(trimmed.startsWith('//')) return null;
     if(trimmed.startsWith('#')||trimmed.startsWith('/')||trimmed.startsWith('./')||trimmed.startsWith('../')||trimmed.startsWith('?')) return escapeAttr(trimmed);
     const schemeMatch=trimmed.match(/^([a-zA-Z][a-zA-Z\d+.-]*):/);
     if(!schemeMatch) return escapeAttr(trimmed);
@@ -983,7 +984,10 @@ async function readTextFile(file){
   if(file&&typeof file.arrayBuffer==='function'){
     const buffer=await file.arrayBuffer();
     try{return new TextDecoder('utf-8',{fatal:true}).decode(buffer);}
-    catch(e){console.warn('ArrayBuffer decode failed, falling back to file.text():',e);}
+    catch(e){
+      console.warn('Strict UTF-8 decode failed, retrying with replacement characters:',e);
+      return new TextDecoder('utf-8').decode(buffer);
+    }
   }
   return file.text();
 }
