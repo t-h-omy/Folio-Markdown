@@ -846,9 +846,14 @@ const APP_VERSION = 'v1.4.0';
 function parseMarkdown(src) {
   const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const escapeAttr = s => escape(s).replace(/"/g,'&quot;');
-  const sanitizeUrl = url => {
+  const sanitizeUrl = (url,kind='link') => {
     const trimmed = url.trim();
-    return /^(javascript|data|vbscript):/i.test(trimmed) ? null : escapeAttr(trimmed);
+    if(!trimmed) return null;
+    if(trimmed.startsWith('#')||trimmed.startsWith('/')||trimmed.startsWith('./')||trimmed.startsWith('../')||trimmed.startsWith('?')) return escapeAttr(trimmed);
+    const schemeMatch=trimmed.match(/^([a-zA-Z][a-zA-Z\d+.-]*):/);
+    if(!schemeMatch) return escapeAttr(trimmed);
+    const allowed=kind==='image'?['http','https']:['http','https','mailto'];
+    return allowed.includes(schemeMatch[1].toLowerCase()) ? escapeAttr(trimmed) : null;
   };
   const inline = s => {
     const tokens = [];
@@ -856,11 +861,11 @@ function parseMarkdown(src) {
     const prepared = s
       .replace(/`([^`]+)`/g, (_,c) => stash('<code>'+escape(c)+'</code>'))
       .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_,alt,url) => {
-        const safeUrl = sanitizeUrl(url);
+        const safeUrl = sanitizeUrl(url,'image');
         return safeUrl ? stash('<img src="'+safeUrl+'" alt="'+escapeAttr(alt)+'">') : '!['+alt+']('+url+')';
       })
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_,text,url) => {
-        const safeUrl = sanitizeUrl(url);
+        const safeUrl = sanitizeUrl(url,'link');
         return safeUrl ? stash('<a href="'+safeUrl+'" target="_blank" rel="noopener">'+escape(text)+'</a>') : '['+text+']('+url+')';
       });
     return escape(prepared)
@@ -977,7 +982,7 @@ function restoreDraft(){
 async function readTextFile(file){
   if(file&&typeof file.arrayBuffer==='function'){
     const buffer=await file.arrayBuffer();
-    try{return new TextDecoder('utf-8').decode(buffer);}
+    try{return new TextDecoder('utf-8',{fatal:true}).decode(buffer);}
     catch(e){console.warn('ArrayBuffer decode failed, falling back to file.text():',e);}
   }
   return file.text();
