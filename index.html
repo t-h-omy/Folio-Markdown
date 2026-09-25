@@ -914,6 +914,7 @@ function parseMarkdown(src) {
       .replace(/~~(.+?)~~/g,'<del>$1</del>')
       .replace(/\u0000(\d+)\u0000/g, (_,idx) => tokens[Number(idx)]);
   };
+  const isThematicBreakLine=line=>/^[ \t]{0,3}(?:(?:-\s*){3,}|(?:_\s*){3,}|(?:\*\s*){3,})$/.test(line);
   const minInd=arr=>{let m=Infinity;arr.forEach(l=>{const t=typeof l==='string'?l:l.text;const r=t.match(/^( *)/);if(r)m=Math.min(m,r[1].length);});return m===Infinity?0:m;};
   const parseBlock=(arr,base)=>{
     let out='',j=0,ctag=null;
@@ -954,15 +955,15 @@ function parseMarkdown(src) {
     }
     const hm=line.match(/^(#{1,6})\s+(.*)/);
     if(hm){html+='<h'+hm[1].length+' data-source-line="'+sl+'">'+inline(hm[2])+'</h'+hm[1].length+'>'; i++; continue;}
-    if(/^[-*_]{3,}\s*$/.test(line)){html+='<hr data-source-line="'+sl+'">'; i++; continue;}
+    if(isThematicBreakLine(line)){html+='<hr data-source-line="'+sl+'">'; i++; continue;}
     if(/^>\s?/.test(line)){
       let bq='';
       while(i<lines.length&&/^>\s?/.test(lines[i])){bq+=lines[i].replace(/^>\s?/,'')+'\n';i++;}
       html+='<blockquote data-source-line="'+sl+'">'+parseMarkdown(bq.trim())+'</blockquote>'; continue;
     }
-    if(/^[ \t]*([-*+]|\d+\.)\s/.test(line)){
+    if(/^[ \t]*([-*+]|\d+\.)\s/.test(line)&&!isThematicBreakLine(line)){
       const listLines=[];
-      while(i<lines.length&&/^[ \t]*([-*+]|\d+\.)\s/.test(lines[i])){listLines.push({text:lines[i],lineIdx:i});i++;}
+      while(i<lines.length&&/^[ \t]*([-*+]|\d+\.)\s/.test(lines[i])&&!isThematicBreakLine(lines[i])){listLines.push({text:lines[i],lineIdx:i});i++;}
       const listHtml=parseBlock(listLines,minInd(listLines));
       html+=listHtml.replace(/^<(ul|ol)>/,'<$1 data-source-line="'+sl+'">'); continue;
     }
@@ -979,7 +980,7 @@ function parseMarkdown(src) {
     }
     if(!line.trim()){i++; continue;}
     let para='';
-    while(i<lines.length&&lines[i].trim()&&!/^(#{1,6}\s|>|[ \t]*([-*+]|\d+\.)\s|```|[-*_]{3,}\s*$)/.test(lines[i])){
+    while(i<lines.length&&lines[i].trim()&&!(/^(#{1,6}\s|>|[ \t]*([-*+]|\d+\.)\s|```)/.test(lines[i])||isThematicBreakLine(lines[i]))){
       para+=(para?' ':'')+lines[i].trim(); i++;
     }
     if(para) html+='<p data-source-line="'+sl+'">'+inline(para)+'</p>';
@@ -1397,6 +1398,10 @@ function renumberOrderedLists(val,cursorPos){
   return changed?{val:lines.join('\n'),cursorPos:Math.max(0,newCursor)}:null;
 }
 
+function isThematicBreakLine(line){
+  return /^[ \t]{0,3}(?:(?:-\s*){3,}|(?:_\s*){3,}|(?:\*\s*){3,})$/.test(line);
+}
+
 editor.addEventListener('input',()=>{
   const rn=renumberOrderedLists(editor.value,editor.selectionStart);
   if(rn){editor.value=rn.val;editor.selectionStart=editor.selectionEnd=rn.cursorPos;}
@@ -1410,6 +1415,7 @@ editor.addEventListener('beforeinput',e=>{
     const le=val.indexOf('\n',s);
     const lineEnd=le===-1?val.length:le;
     const fullLine=val.slice(ls,lineEnd);
+    if(isThematicBreakLine(fullLine)) return;
     const ulMatch=fullLine.match(/^(\s*[-*+]) /);
     const olMatch=fullLine.match(/^(\s*\d+\.)(\s+)/);
     if(ulMatch||olMatch){
@@ -1437,6 +1443,7 @@ editor.addEventListener('keydown',e=>{
     const le=val.indexOf('\n',s);
     const lineEnd=le===-1?val.length:le;
     const fullLine=val.slice(ls,lineEnd);
+    if(isThematicBreakLine(fullLine)) return;
     const ulMatch=fullLine.match(/^(\s*[-*+]) /);
     const olMatch=fullLine.match(/^(\s*)(\d+)\.(\s+)/);
     if(ulMatch||olMatch){
