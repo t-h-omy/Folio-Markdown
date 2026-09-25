@@ -1086,6 +1086,7 @@ function registerLaunchFileHandler(){
         editor.value=preLaunchState.content;
         setFilename(preLaunchState.filename);
         fileHandle=preLaunchState.handle;
+        allowLaunchOverrideOnce=!preLaunchState.dirty;
         setDirty(preLaunchState.dirty);
         renderPreview(); updateStats(); showContent();
       } else {
