@@ -852,7 +852,7 @@ function parseMarkdown(src) {
     if(trimmed.startsWith('//')) return null;
     if(trimmed.startsWith('#')||trimmed.startsWith('/')||trimmed.startsWith('./')||trimmed.startsWith('../')||trimmed.startsWith('?')) return escapeAttr(trimmed);
     const schemeMatch=trimmed.match(/^([a-zA-Z][a-zA-Z\d+.-]*):/);
-    if(!schemeMatch) return escapeAttr(trimmed);
+    if(!schemeMatch) return null;
     const allowed=kind==='image'?['http','https']:['http','https','mailto'];
     return allowed.includes(schemeMatch[1].toLowerCase()) ? escapeAttr(trimmed) : null;
   };
@@ -861,11 +861,11 @@ function parseMarkdown(src) {
     const stash = html => '\u0000' + (tokens.push(html) - 1) + '\u0000';
     const prepared = s
       .replace(/`([^`]+)`/g, (_,c) => stash('<code>'+escape(c)+'</code>'))
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_,alt,url) => {
+      .replace(/!\[([^\]]*)\]\(([^()\s]+)\)/g, (_,alt,url) => {
         const safeUrl = sanitizeUrl(url,'image');
         return safeUrl ? stash('<img src="'+safeUrl+'" alt="'+escapeAttr(alt)+'">') : stash(escape('!['+alt+']('+url+')'));
       })
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_,text,url) => {
+      .replace(/\[([^\]]+)\]\(([^()\s]+)\)/g, (_,text,url) => {
         const safeUrl = sanitizeUrl(url,'link');
         return safeUrl ? stash('<a href="'+safeUrl+'" target="_blank" rel="noopener">'+escape(text)+'</a>') : stash(escape('['+text+']('+url+')'));
       });
