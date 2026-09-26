@@ -989,6 +989,9 @@ function parseMarkdown(src) {
 }
 
 let fileHandle=null, isDirty=false, currentView='editor';
+let allowLaunchOverrideOnce=false;
+let launchLoadStarted=false;
+let launchFlowActive=false;
 
 // --- Draft persistence (survive device memory clearing) ---
 const DRAFT_KEY='folio_draft';
@@ -1006,10 +1009,12 @@ function clearDraft(){try{localStorage.removeItem(DRAFT_KEY);}catch(e){console.w
 function scheduleSaveDraft(){clearTimeout(_draftTimer);_draftTimer=setTimeout(saveDraft,500);}
 function restoreDraft(){
   try{
+    if(launchLoadStarted) return;
     const raw=localStorage.getItem(DRAFT_KEY);
     if(!raw)return;
     const d=JSON.parse(raw);
     if(!d||typeof d.content!=='string'||!d.content)return;
+    allowLaunchOverrideOnce=!d.dirty;
     editor.value=d.content;
     setFilename(d.filename||'untitled');
     setDirty(!!d.dirty);
@@ -1048,6 +1053,7 @@ async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
     editor.value=content;
     setFilename(nextName);
     fileHandle=handle;
+    allowLaunchOverrideOnce=false;
     setDirty(false); renderPreview(); updateStats(); showContent();
     saveDraft(); showToast(toastMessage,'success');
   }catch(e){
@@ -1058,6 +1064,85 @@ async function loadFileIntoEditor(file,{handle=null,toastMessage='Opened'}={}){
     if(prevState.content) showContent();
     throw e;
   }
+}
+function registerLaunchFileHandler(){
+  if(!('launchQueue' in window)||typeof window.launchQueue.setConsumer!=='function') return;
+  window.launchQueue.setConsumer(async launchParams=>{
+    const files=launchParams&&launchParams.files;
+    let handle=null;
+    if(files&&typeof files[Symbol.iterator]==='function'){
+      for(const candidate of files){handle=candidate; break;}
+    }
+    if(!handle) return;
+    if(launchFlowActive){
+      showToast('Already opening a file','error');
+      return;
+    }
+    launchFlowActive=true;
+    launchLoadStarted=true;
+    const preLaunchState={
+      content:editor.value,
+      filename:fnameText.textContent||'untitled',
+      handle:fileHandle,
+      dirty:isDirty,
+      showingContent:emptyState.classList.contains('hidden')
+    };
+    const isCleanStartupState=!preLaunchState.showingContent&&!preLaunchState.dirty&&!preLaunchState.handle&&!preLaunchState.content;
+    const hasPreLaunchState=preLaunchState.showingContent||preLaunchState.content!==''||preLaunchState.filename!=='untitled'||preLaunchState.handle!==null||preLaunchState.dirty;
+    const restorePreLaunchState=()=>{
+      launchFlowActive=false;
+      launchLoadStarted=false;
+      if(hasPreLaunchState){
+        editor.value=preLaunchState.content;
+        setFilename(preLaunchState.filename);
+        fileHandle=preLaunchState.handle;
+        allowLaunchOverrideOnce=!preLaunchState.dirty;
+        setDirty(preLaunchState.dirty);
+        renderPreview(); updateStats();
+        if(preLaunchState.showingContent) showContent();
+        else emptyState.classList.remove('hidden');
+      } else {
+        editor.value='';
+        setFilename('untitled');
+        fileHandle=null;
+        allowLaunchOverrideOnce=false;
+        setDirty(false);
+        renderPreview(); updateStats();
+        emptyState.classList.remove('hidden');
+        restoreDraft();
+      }
+    };
+    try{
+      const file=await handle.getFile();
+      if(!/\.(md|markdown|txt)$/i.test(file.name)){
+        restorePreLaunchState();
+        showToast('Unsupported file type','error');
+        return;
+      }
+      const openLaunchFile=async()=>{
+        await loadFileIntoEditor(file,{handle,toastMessage:'Opened'});
+        launchFlowActive=false;
+        launchLoadStarted=false;
+      };
+      if(allowLaunchOverrideOnce||isCleanStartupState){
+        allowLaunchOverrideOnce=false;
+        await openLaunchFile();
+      } else if(isDirty&&editor.value.trim()){
+        _confirmCancelCb=()=>{launchFlowActive=false; launchLoadStarted=false;};
+        confirmDiscard(()=>openLaunchFile().catch(e=>{
+          restorePreLaunchState();
+          console.error('Launch open failed:',e);
+          showToast('Could not open','error');
+        }));
+      } else {
+        await openLaunchFile();
+      }
+    }catch(e){
+      restorePreLaunchState();
+      console.error('Launch open failed:',e);
+      showToast('Could not open','error');
+    }
+  });
 }
 // ---
 
@@ -1289,7 +1374,9 @@ function openSheet(){overlay.classList.add('open'); sheet.classList.add('open');
 function closeSheet(){overlay.classList.remove('open'); sheet.classList.remove('open');}
 
 let _confirmCb=null;
+let _confirmCancelCb=null;
 function confirmDiscard(cb){
+  _confirmCancelCb=null;
   if(isDirty&&editor.value.trim()){
     _confirmCb=cb;
     confirmOverlay.classList.add('open'); confirmDialog.classList.add('open');
@@ -1297,14 +1384,19 @@ function confirmDiscard(cb){
 }
 document.getElementById('cd-discard').addEventListener('click',()=>{
   confirmOverlay.classList.remove('open'); confirmDialog.classList.remove('open');
-  if(_confirmCb){_confirmCb(); _confirmCb=null;}
+  const cb=_confirmCb;
+  _confirmCb=null;
+  _confirmCancelCb=null;
+  if(cb) cb();
 });
 document.getElementById('cd-cancel').addEventListener('click',()=>{
   confirmOverlay.classList.remove('open'); confirmDialog.classList.remove('open');
+  if(_confirmCancelCb){_confirmCancelCb(); _confirmCancelCb=null;}
   _confirmCb=null;
 });
 confirmOverlay.addEventListener('click',()=>{
   confirmOverlay.classList.remove('open'); confirmDialog.classList.remove('open');
+  if(_confirmCancelCb){_confirmCancelCb(); _confirmCancelCb=null;}
   _confirmCb=null;
 });
 
@@ -1405,6 +1497,7 @@ function isThematicBreakLine(line){
 editor.addEventListener('input',()=>{
   const rn=renumberOrderedLists(editor.value,editor.selectionStart);
   if(rn){editor.value=rn.val;editor.selectionStart=editor.selectionEnd=rn.cursorPos;}
+  allowLaunchOverrideOnce=false;
   showContent(); setDirty(true); renderPreview(); updateStats(); scheduleSaveDraft();
 });
 editor.addEventListener('beforeinput',e=>{
@@ -1641,10 +1734,15 @@ document.addEventListener('drop',async e=>{
   });
 });
 
-updateStats();
-restoreDraft();
-setView('editor');
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+function initializeApp(){
+  updateStats();
+  registerLaunchFileHandler();
+  restoreDraft();
+  setView(currentView);
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+initializeApp();
 </script>
 </body>
 </html>
