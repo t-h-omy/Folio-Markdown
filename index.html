@@ -841,7 +841,7 @@ body.view-preview  #preview-pane { transform: translateX(0);       opacity: 1; p
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha384-Rp3zDb+pEKMdYa2E5V6xwTVmV2gmnAsQfPWJF9tRl68m9p/WNPtNBGw2jS6jTAph" crossorigin="anonymous"></script>
 <script>
-const APP_VERSION = 'v1.4.0';
+const APP_VERSION = 'v1.4.1';
 
 function parseMarkdown(src) {
   const escape = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1219,6 +1219,7 @@ function renderPreview(){
       setDirty(true); scheduleSaveDraft(); updateStats(); renderPreview();
     });
   });
+  if(currentView==='contents') renderToc();
 }
 function showContent(){emptyState.classList.add('hidden');}
 
@@ -1298,7 +1299,6 @@ function setView(v){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
   document.querySelectorAll('.dvt-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
   if(v!=='editor') renderPreview();
-  if(v==='contents') renderToc();
   if(v==='split') requestAnimationFrame(_syncPreviewFromEditor);
   if(anchorLine!==null) requestAnimationFrame(()=>_scrollToSourceLine(v,anchorLine));
 }
