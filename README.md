@@ -38,7 +38,9 @@ Then visit `http://localhost:8080` — you'll see an install prompt in the brows
 - **Live stats**: word count, character count, line count, cursor position
 - **Offline capable** via service worker
 - **Installable** as a desktop/mobile app
+- **Autosave** drafts on all browsers, with optional write-back to files on Chromium-based browsers
 
 ## Browser compatibility
-- Chrome / Edge 86+ — full File System Access API (save in place)
-- Firefox / Safari — fallback download for save, everything else works
+- Chrome / Edge 86+ — save in place and optional autosave write-back to files
+- Firefox / Safari — drafts are autosaved in the browser; file autosave is unavailable and Save downloads a copy
+- iOS and iPadOS — drafts are autosaved in the app; file autosave is unavailable
